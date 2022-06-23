@@ -1,0 +1,620 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.authPolicyMgmt.dao.AuthPolicyMgmtMapper">
+	<sql id="policyLogJoin">
+		left outer join tb_sp_service T2 on T1.sid = T2.svcnum 
+		left outer join tb_sp_organization T3 on (T2.oidkey = T3.oidkey) 
+	</sql>
+	
+<sql id="policyLogListWhere">
+		<where>
+			<!-- <if test="siteManager != null and siteManager != ''"> and T4.siteManager <![CDATA[ < ]]> 3</if> 리스트 구분 -->
+			<!-- <if test="adminType != null and adminType != ''"> and T1.sid = #{svcNum}</if> -->
+			
+			<if test="siteManager == 3 "><!-- 업체 구분 -->
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and T3.OIDKEY = #{svcOrganizationKey}</if>
+			</if>
+			<if test="siteManager ==  4 "><!-- 업체 구분 -->
+				and svcnum in ( 
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				)
+			</if>
+			<!-- 검색 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and T3.OIDNAME = #{svcOrganization}</if> <!-- 셀렉트 선택 -->
+			<if test="condSearchNm != null and condSearchNm != ''"> and T1.userid  like concat('%',#{condSearchNm},'%')</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and T1.setdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+				and T1.setdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			</if>
+		</where>
+	</sql>	
+	
+	
+<sql id="policyJoin">
+		inner join tb_sp_service T2 on T1.sid = T2.svcnum
+	</sql>
+
+	<sql id="policyListWhere">
+		<where>
+			<if test="adminType != null and adminType != ''"> and T1.sid = #{svcNum}</if>
+
+		</where>
+	</sql>
+	
+	
+
+
+<sql id="policyColumns">
+	   T1.sid					/* 서비스ID */
+	 , T1.authpolicy			/* 인증 정책 */
+	 , T1.multipolicy			/* 다중인증 정책 */
+	 , T1.pwretrypolicy			/* PW 재시도 정책 */
+	 , T1.pinretrypolicy		/* PIN 재시도 정책 */
+	 , T1.authtimepolicy		/* 인증 시간 정책 */
+	 , T1.trustedappid			/* APPID 정책 */
+	 , T1.signsavepolicy		/* 전자서명 저장 정책(0:저장안함, 1:저장, 2:Transaction일 경우 저장) */
+	 , T1.logpolicy				/* 로그 저장 정책(0:미사용, 1:사용, 2:등록로그만 사용, 4:인증로그만 사용) */
+	 , T1.blockpolicy			/* 인증 잠금 정책 */
+	 , T1.prioritypolicy		/* 인증 우선순위 정책 */
+	 , T1.devicepolicy			/* DEVICE 정책 */
+	 , T1.systemidpolicy		/* 시스템ID정책 */
+	 , T1.checkdevicemodel		/* FIDO DEVICE CHECK 정책 */
+	 , T1.defaultauthpolicy		/* 기본 정책 */
+	 , T1.fidootppolicy			/* FIDO OTP 정책 */
+	 , T1.otpmodpolicy			/* MOTP 보정 정책(1:자동 보정정책) */
+	 , T1.otplogpolicy			/* OTP 로그 정책(0:저장안함, 1:저장, 2:실패로그만 저장, 4: 성공로그만 저장, 8: S/N조회 로그만 저장) */
+	 , T1.otpcyclepolicy		/* OTP 체크 주기 정책(30: 30초, 60: 60초) */
+	 , T1.otpcheckcntpolicy		/* OTP 체크 횟수 정책(3: 3배수, 5: 5배수) */
+	 , T2.svcname				/* 서비스명 */
+	</sql>
+
+	<!-- <sql id="selectMetaDataForListWhere">
+		<where>
+			<if test="svcOrganization != null and svcOrganization != ''"> and b.OIDNAME = #{svcOrganization}</if> 셀렉트 선택
+		</where>
+	</sql> -->
+	
+	
+	<!-- 인증 정책 정보 조회 -->
+	<select id="selectPolicy" resultType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.selectPolicy */
+		select authpolicy			/* 인증 정책 */
+			 , multipolicy			/* 다중인증 정책 */
+			 , pwretrypolicy		/* PW 재시도 정책 */
+			 , pinretrypolicy		/* PIN 재시도 정책 */
+			 , authtimepolicy		/* 인증 시간 정책 */
+			 , trustedappid			/* APPID 정책 */
+			 , signsavepolicy		/* 전자서명 저장 정책 */
+			 , blockpolicy			/* 인증 잠금 정책 */
+			 , prioritypolicy		/* 인증 우선순위 정책 */
+		from tb_sp_policy
+	</select>
+	
+	<!-- FIDO 메타데이터 정보 로우 카운트 조회 -->
+	<select id="selectMetaDataForRowCount" parameterType="commonVO" resultType="int">
+		/* AuthPolicyMgmtMapper.selectMetaDataForRowCount */
+		select count(*)
+		from tb_sp_metadata
+		<!-- <include refid="selectMetaDataForListWhere"></include> -->
+	</select>
+	
+	<!-- FIDO 메타데이터 정보 리스트 조회 -->
+	<select id="selectMetaDataForList" parameterType="commonVO" resultType="tbSpMetaDataVO">
+		/* AuthPolicyMgmtMapper.selectMetaDataForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						select a.num								/* INDEX */
+							 , a.aaid								/* AAID */
+							 , a.description						/* 설명 */
+							 , a.autheticatorversion				/* 버전 */
+							 , a.upv								/* 프로토콜버전 */
+							 , a.assertionscheme					/* 스키마 */
+							 , a.autheticationalg					/* 알고리즘 */
+							 , a.publickeyalgenc					/* 알고리즘 */
+							 , a.attestationtypes					/* ATTESTATION Type */
+							 , a.userverificationdetails			/* 인증 Type */
+							 , a.keyprotection					/* Key 보호 수준 */
+							 , a.matcherprotection				/* Matcher 보호 수준 */
+							 , a.attestationrootcertificates		/* 인증서 */
+							 , a.osgubun							/* OS구분 */
+							 , a.companyinfo						/* 단말기 회사정보 */
+							 , a.modelinfo						/* 단말기 모델정보 */
+						from tb_sp_metadata a
+						<!-- <include refid="selectMetaDataForListJoin"></include>
+						<include refid="selectMetaDataForListWhere"></include> -->
+						
+				) t
+		) t	order by aaid desc
+		limit #{pageSet} offset #{offSet}
+	</select>
+	
+	<!-- FIDO메타데이터 키에 맞는 FIDO 메타데이터 정보 조회 -->
+	<select id="selectMetaDataForByPk" parameterType="commonVO" resultType="tbSpMetaDataVO">
+		/* AuthPolicyMgmtMapper.selectMetaDataForByPk */
+		select num								/* INDEX */
+			 , aaid								/* AAID */
+			 , description						/* 설명 */
+			 , autheticatorversion				/* 버전 */
+			 , upv								/* 버전 */
+			 , assertionscheme					/* 스키마 */
+			 , autheticationalg					/* 알고리즘 */
+			 , publickeyalgenc					/* 알고리즘 */
+			 , attestationtypes					/* ATTESTATION Type */
+			 , userverificationdetails			/* 인증 Type */
+			 , keyprotection					/* Key 보호 수준 */
+			 , matcherprotection				/* Matcher 보호 수준 */
+			 , attestationrootcertificates		/* 인증서 */
+			 , osgubun							/* OS구분 */
+			 , companyinfo						/* 단말기 회사정보 */
+			 , modelinfo						/* 단말기 모델정보 */
+		from tb_sp_metadata
+		where num = #{num}	/* INDEX */
+	</select>
+	
+	<!-- 메타데이터 다음 시퀀스 조회 -->
+	<select id="selectMetaDataNextNum" resultType="int">
+		/* AuthPolicyMgmtMapper.selectMetaDataNextNum */
+		select coalesce(max(num), 0)+1 from tb_sp_metadata
+	</select>
+	
+	<!-- 기본 인증 정책 정보 저장 -->
+	<insert id="insertBasicAuthPolicy" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.insertBasicAuthPolicy */
+		insert into tb_sp_policy (
+				authpolicy			/* 인증정책 */
+			,	authtimepolicy		/* 인증 시간정책 */
+			,	signsavepolicy		/* 전자서명 저장 정책 */
+		) values (
+				#{authPolicy}		/* 인증정책 */
+			,	#{authTimePolicy}	/* 인증 시간정책 */
+			,	#{signSavePolicy}	/* 전자서명 저장 정책 */
+		)
+	</insert>
+	
+	<!-- 멀티 팩터 인증 정책 정보 저장 -->
+	<insert id="insertMultiAuthPolicy" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.insertMultiAuthPolicy */
+		insert into tb_sp_policy (
+				multipolicy		/* 다중인증 정책 */
+		) values (
+				#{multiPolicy}	/* 다중인증 정책 */
+		)
+	</insert>
+	
+	<!-- 웹인증 잠금 정책 정보 저장 -->
+	<insert id="insertWebAuthLockPolicy" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.insertWebAuthLockPolicy */
+		insert into tb_sp_policy (
+				blockpolicy		/* 인증 잠금 정책 */
+		) values (
+				#{blockPolicy}	/* 인증 잠금 정책 */
+		)
+	</insert>
+	
+	<!-- 인증 정책 정보 저장 구버전
+
+	<insert id="insertPolicy" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.insertPolicy */
+		insert into tb_sp_policy (
+				authpolicy			/* 인증 정책 */
+			,	multipolicy			/* 다중인증 정책 */
+			,	pwretrypolicy		/* PW 재시도정책 */
+			,	pinretrypolicy		/* PIN 재시도정책 */
+			,	authtimepolicy		/* 인증 시간정책 */
+			,	trustedappid		/* APPID 정책 */
+			,	signsavepolicy		/* 전자서명 저장 정책 */
+			,	blockpolicy			/* 인증 잠금 정책 */
+			,	prioritypolicy		/* 인증 우선순위정책 */
+			,	devicepolicy		/* DEVICE 정책 */
+			,	systemidpolicy		/* 시스템ID 정책 */
+		) values (
+				#{authPolicy}		/* 인증 정책 */
+			,	#{multiPolicy}		/* 다중인증 정책 */
+			,	#{pwRetryPolicy}	/* PW 재시도정책 */
+			,	#{pinRetryPolicy}	/* PIN 재시도정책 */
+			,	#{authTimePolicy}	/* 인증 시간정책 */
+			,	#{trustedAppid}		/* APPID 정책 */
+			,	#{signSavePolicy}	/* 전자서명 저장 정책 */
+			,	#{blockPolicy}		/* 인증 잠금 정책 */
+			,	#{priorityPolicy}	/* 인증 우선순위정책 */
+			,	#{devicePolicy}		/* DEVICE 정책 */
+			,	#{systemIdPolicy}	/* 시스템ID 정책 */
+		)
+	</insert>
+	 -->
+<insert id="insertPolicy" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.insertPolicy */
+		insert into tb_sp_policy (
+				sid					/* 서비스ID */
+			,	authpolicy			/* 인증 정책 */
+			,	multipolicy			/* 다중인증 정책 */
+			<!-- ,  fidootppolicy		/* FIDO OTP 정책 */ -->
+			,  otpmodpolicy			/* MOTP 보정 정책(1:자동 보정정책) */
+			,  otplogpolicy			/* OTP 로그 정책(0:저장안함, 1:저장, 2:실패로그만 저장, 4: 성공로그만 저장, 8: S/N조회 로그만 저장) */
+			,  otpcyclepolicy		/* OTP 체크 주기 정책(30: 30초, 60: 60초) */
+			,  otpcheckcntpolicy	/* OTP 체크 횟수 정책(3: 3배수, 5: 5배수) */
+		) values (
+				#{sid}					/* 서비스ID */
+			,	1						/* 인증 정책 */
+			,	0						/* 시스템ID 정책 */
+			 <!-- ,  #{fidoOtpPolicy}		/* FIDO OTP 정책 */ -->
+			 ,  cast(#{otpModPolicy} as integer)	/* MOTP 보정 정책(1:자동 보정정책) */
+			 ,  cast(#{otpLogPolicy} as integer)			/* OTP 로그 정책(0:저장안함, 1:저장, 2:실패로그만 저장, 4: 성공로그만 저장, 8: S/N조회 로그만 저장) */
+			 ,  cast(#{otpCyclePolicy} as integer)		/* OTP 체크 주기 정책(30: 30초, 60: 60초) */
+			 ,  cast(#{otpCheckCntPolicy} as integer)	/* OTP 체크 횟수 정책(3: 3배수, 5: 5배수) */
+		)
+	</insert>
+	<!-- FIDO 메타데이터 정보 저장 -->
+	<insert id="insertMetaData" parameterType="tbSpMetaDataVO">
+		/* AuthPolicyMgmtMapper.insertMetaData */
+		insert into tb_sp_metadata (
+				num													/* INDEX */
+			,	aaid												/* AAID */
+			,	description											/* 설명 */
+			,	autheticatorversion									/* 버전 */
+			,	upv													/* 버전 */
+			,	assertionscheme										/* 스키마 */
+			,	autheticationalg									/* 알고리즘 */
+			,	publickeyalgenc										/* 알고리즘 */
+			,	attestationtypes									/* ATTESTATION TYPE */
+			,	userverificationdetails								/* 인증 TYPE */
+			,	keyprotection										/* KEY 보호수준 */
+			,	matcherprotection									/* MATCHER 보호수준 */
+			,	attestationrootcertificates							/* 인증서 */
+			,	osgubun												/* OS구분 */
+			,	companyinfo											/* 단말기 회사정보 */
+			,	modelinfo											/* 단말기 모델정보 */
+			<!-- ,	oidnum												/* 서비스 기관 번호 */ -->
+		) values (
+				#{num}												/* INDEX */
+			,	#{aaId, jdbcType=VARCHAR}							/* AAID */
+			,	#{description, jdbcType=VARCHAR}					/* 설명 */
+			,	#{autheticatorVersion, jdbcType=VARCHAR}			/* 버전 */
+			,	#{upv, jdbcType=VARCHAR}							/* 프로토콜버전 */
+			,	#{assertionScheme, jdbcType=VARCHAR}				/* 스키마 */
+			,	#{autheticationAlg, jdbcType=VARCHAR}				/* 알고리즘 */
+			,	#{publicKeyAlgEnc, jdbcType=VARCHAR}				/* 알고리즘 */
+			,	#{attestationTypes, jdbcType=VARCHAR}				/* ATTESTATION TYPE */
+			,	#{userVerificationDetails, jdbcType=VARCHAR}		/* 인증 TYPE */
+			,	#{keyProtection, jdbcType=VARCHAR}					/* KEY 보호수준 */
+			,	#{matcherProtection, jdbcType=VARCHAR}				/* MATCHER 보호수준 */
+			,	#{attestationRootCertificates, jdbcType=VARCHAR}	/* 인증서 */
+			,	#{osGubun,jdbcType=VARCHAR}							/* OS구분 */
+			,	#{companyInfo, jdbcType=VARCHAR}					/* 단말기 회사정보 */
+			,	#{modelInfo, jdbcType=VARCHAR}						/* 단말기 모델정보 */
+			<!-- ,	#{oidnum}											/* 서비스 기관 번호 */ -->
+		)
+	</insert>
+	
+	<!-- 인증 정책 로그 정보 저장 -->
+	<insert id="insertPolicyLog" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.insertPolicyLog */
+		insert into tb_sp_policy_log (
+				num					/* 번호 */
+			,	authpolicy			/* 인증 정책 */
+			,	multipolicy			/* 다중인증 정책 */
+			,	pwretrypolicy		/* PW 재시도정책 */
+			,	pinretrypolicy		/* PIN 재시도정책 */
+			,	authtimepolicy		/* 인증 시간정책 */
+			,	trustedappid		/* APPID 정책 */
+			,	signsavepolicy		/* 전자서명 저장 정책 */
+			,	blockpolicy			/* 인증 잠금 정책 */
+			,	prioritypolicy		/* 인증 우선순위정책 */
+			,	devicepolicy		/* DEVICE 정책 */
+			,	systemidpolicy		/* 시스템ID 정책 */
+			,	policytype			/* 인증정책 TYPE */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일시 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+			
+		) values (
+				( select * from ( select coalesce(max(num), 0)+1 from tb_sp_policy_log a ) a )	/* 번호 */
+			,	#{authPolicy, jdbcType=VARCHAR}						/* 인증 정책 */
+			,	#{multiPolicy, jdbcType=VARCHAR}					/* 다중인증 정책 */
+			,	#{pwRetryPolicy, jdbcType=VARCHAR}					/* PW 재시도정책 */
+			,	#{pinRetryPolicy, jdbcType=VARCHAR}					/* PIN 재시도정책 */
+			,	#{authTimePolicy, jdbcType=VARCHAR}					/* 인증 시간정책 */
+			,	#{trustedAppid, jdbcType=VARCHAR}					/* APPID 정책 */
+			,	#{signSavePolicy, jdbcType=VARCHAR}					/* 전자서명 저장 정책 */
+			,	#{blockPolicy, jdbcType=VARCHAR}					/* 인증 잠금 정책 */
+			,	#{priorityPolicy, jdbcType=VARCHAR}					/* 인증 우선순위정책 */
+			,	#{devicePolicy, jdbcType=VARCHAR}					/* DEVICE 정책 */
+			,	#{systemIdPolicy, jdbcType=VARCHAR}					/* 시스템ID 정책 */
+			,	#{policyType}										/* 인증정책 TYPE */
+			,	#{adminId}											/* 행위자ID */
+			,	#{adminName}										/* 행위자명 */
+			,	#{setDateTime}										/* 행위일시 */
+			,	#{adminIp}											/* 행위자IP */
+			,	#{adminComName}										/* 행위자COMNAME */
+			,	cast(#{actionType} as integer)						/* 행위타입 */
+			,	#{conduct, jdbcType=VARCHAR}						/* 행위 */
+			,	#{conductValue, jdbcType=VARCHAR}					/* 행위값 */
+		)
+	</insert>
+	
+	<!-- FIDO 메타데이터 로그 정보 저장 -->
+	<insert id="insertMetaDataLog" parameterType="tbSpMetaDataVO">
+		/* AuthPolicyMgmtMapper.insertMetaDataLog */
+		insert into tb_sp_metadata_log (
+				num									/* INDEX */
+			,	aaid								/* AAID */
+			,	description							/* 설명 */
+			,	autheticatorversion					/* 버전 */
+			,	upv									/* 버전 */
+			,	assertionscheme						/* 스키마 */
+			,	autheticationalg					/* 알고리즘 */
+			,	publickeyalgenc						/* 알고리즘 */
+			,	attestationtypes					/* ATTESTATION TYPE */
+			,	userverificationdetails				/* 인증 TYPE */
+			,	keyprotection						/* KEY 보호수준 */
+			,	matcherprotection					/* MATCHER 보호수준 */
+			,	attestationrootcertificates			/* 인증서 */
+			,	osgubun								/* OS구분 */
+			,	companyinfo							/* 단말기 회사정보 */
+			,	modelinfo							/* 단말기 모델정보 */
+			,	adminid								/* 행위자ID */
+			,	adminname							/* 행위자명 */
+			,	setdatetime							/* 행위일시 */
+			,	adminip								/* 행위자IP */
+			,	admincomname						/* 행위자COMNAME */
+			,	actiontype							/* 행위타입 */
+			,	conduct								/* 행위 */
+			,	conductvalue						/* 행위값 */
+		) values (
+				( select * from ( select coalesce(max(num), 0)+1 from tb_sp_metadata_log a ) a )	/* 번호 */
+			,	#{aaId, jdbcType=VARCHAR}							/* AAID */
+			,	#{description, jdbcType=VARCHAR}					/* 설명 */
+			,	#{autheticatorVersion, jdbcType=VARCHAR}			/* 버전 */
+			,	#{upv, jdbcType=VARCHAR}							/* 프로토콜버전 */
+			,	#{assertionScheme, jdbcType=VARCHAR}				/* 스키마 */
+			,	#{autheticationAlg, jdbcType=VARCHAR}				/* 알고리즘 */
+			,	#{publicKeyAlgEnc, jdbcType=VARCHAR}				/* 알고리즘 */
+			,	#{attestationTypes, jdbcType=VARCHAR}				/* ATTESTATION TYPE */
+			,	#{userVerificationDetails, jdbcType=VARCHAR}		/* 인증 TYPE */
+			,	#{keyProtection, jdbcType=VARCHAR}					/* KEY 보호수준 */
+			,	#{matcherProtection, jdbcType=VARCHAR}				/* MATCHER 보호수준 */
+			,	#{attestationRootCertificates, jdbcType=VARCHAR}	/* 인증서 */
+			,	#{osGubun,jdbcType=VARCHAR}							/* OS구분 */
+			,	#{companyInfo, jdbcType=VARCHAR}					/* 단말기 회사정보 */
+			,	#{modelInfo, jdbcType=VARCHAR}						/* 단말기 모델정보 */
+			,	#{adminId}											/* 행위자ID */
+			,	#{adminName}										/* 행위자명 */
+			,	#{setDateTime}										/* 행위일시 */
+			,	#{adminIp}											/* 행위자IP */
+			,	#{adminComName}										/* 행위자COMNAME */
+			,	cast(#{actionType} as integer)										/* 행위타입 */
+			,	#{conduct, jdbcType=VARCHAR}						/* 행위 */
+			,	#{conductValue, jdbcType=VARCHAR}					/* 행위값 */
+		)
+	</insert>
+	
+	<!-- FIDO 메타데이터 로그 정보 저장 insert ~ select -->
+	<insert id="insertMetaDataLogByPk" parameterType="tbSpMetaDataVO">
+		/* AuthPolicyMgmtMapper.insertMetaDataLogByPk */
+		insert into tb_sp_metadata_log (
+				num									/* INDEX */
+			,	aaid								/* AAID */
+			,	description							/* 설명 */
+			,	autheticatorversion					/* 버전 */
+			,	upv									/* 버전 */
+			,	assertionscheme						/* 스키마 */
+			,	autheticationalg					/* 알고리즘 */
+			,	publickeyalgenc						/* 알고리즘 */
+			,	attestationtypes					/* ATTESTATION TYPE */
+			,	userverificationdetails				/* 인증 TYPE */
+			,	keyprotection						/* KEY 보호수준 */
+			,	matcherprotection					/* MATCHER 보호수준 */
+			,	attestationrootcertificates			/* 인증서 */
+			,	osgubun								/* OS구분 */
+			,	companyinfo							/* 단말기 회사정보 */
+			,	modelinfo							/* 단말기 모델정보 */
+			,	adminid								/* 행위자ID */
+			,	adminname							/* 행위자명 */
+			,	setdatetime							/* 행위일시 */
+			,	adminip								/* 행위자IP */
+			,	admincomname						/* 행위자COMNAME */
+			,	actiontype							/* 행위타입 */
+			,	conduct								/* 행위 */
+			,	conductvalue						/* 행위값 */
+		)
+			select ( select * from ( select coalesce(max(num), 0)+1 from tb_sp_metadata_log a ) a )	/* 번호 */
+				 , aaid													/* AAID */
+				 , description											/* 설명 */
+				 , autheticatorversion									/* 버전 */
+				 , upv													/* 프로토콜버전 */
+				 , assertionscheme										/* 스키마 */
+				 , autheticationalg										/* 알고리즘 */
+				 , publickeyalgenc										/* 알고리즘 */
+				 , attestationtypes										/* ATTESTATION TYPE */
+				 , userverificationdetails								/* 인증 TYPE */
+				 , keyprotection										/* KEY 보호수준 */
+				 , matcherprotection									/* MATCHER 보호수준 */
+				 , attestationrootcertificates							/* 인증서 */
+				 , osgubun												/* OS구분 */
+				 , companyinfo											/* 단말기 회사정보 */
+				 , modelinfo											/* 단말기 모델정보 */
+				 , #{adminId}											/* 행위자ID */
+				 , #{adminName}											/* 행위자명 */
+				 , #{setDateTime}										/* 행위일시 */
+				 , #{adminIp}											/* 행위자IP */
+				 , #{adminComName}										/* 행위자COMNAME */
+				 , cast(#{actionType} as integer)						/* 행위타입 */
+				 , #{conduct, jdbcType=VARCHAR}							/* 행위 */
+				 , #{conductValue, jdbcType=VARCHAR}					/* 행위값 */
+			from tb_sp_metadata
+			where num = #{num}
+	</insert>
+	
+	<!-- 기본 인증 정책 정보 수정 -->
+	<update id="updateBasicAuthPolicy" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.updateBasicAuthPolicy */
+		update tb_sp_policy set
+				authpolicy = #{authPolicy}			/* 인증 정책 */
+			,	authtimepolicy = #{authTimePolicy}	/* 인증 시간정책 */
+			,	signsavepolicy = #{signSavePolicy}	/* 전자서명 저장 정책 */
+		where 1 = 1
+	</update>
+	
+	<!-- 멀티 팩터 인증 정책 정보 수정 -->
+	<update id="updateMultiAuthPolicy" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.updateMultiAuthPolicy */
+		update tb_sp_policy set
+				multipolicy = #{multiPolicy}	/* 멀티인증 정책 */
+		where 1 = 1
+	</update>
+	
+	<!-- 웹인증 정책 정보 수정 -->
+	<update id="updateWebAuthLockPolicy" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.updateWebAuthLockPolicy */
+		update tb_sp_policy set
+				blockpolicy = #{blockPolicy}	/* 인증 잠금 정책 */
+		where 1 = 1
+	</update>
+	
+		<!-- 인증 정책 정보 수정 -->
+	<update id="updatePolicy" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.updatePolicy */
+		update TB_SP_POLICY set
+				sid = #{sid}								/* 서비스ID */
+			 ,	authpolicy = 1								/* 인증 정책 */
+			 ,	multipolicy = 0								/* 다중인증 정책 */
+			 <!-- ,  fidootppolicy = #{fidoOtpPolicy}			/* FIDO OTP 정책 */ -->
+			 ,  otpmodpolicy = cast(#{otpModPolicy} as integer)				/* MOTP 보정 정책(1:자동 보정정책) */
+			 ,  otplogpolicy = cast(#{otpLogPolicy} as integer)				/* OTP 로그 정책(0:저장안함, 1:저장, 2:실패로그만 저장, 4: 성공로그만 저장, 8: S/N조회 로그만 저장) */
+			 ,  otpcyclepolicy = cast(#{otpCyclePolicy} as integer)			/* OTP 체크 주기 정책(30: 30초, 60: 60초) */
+			 ,  otpcheckcntpolicy = cast(#{otpCheckCntPolicy} as integer)	/* OTP 체크 횟수 정책(3: 3배수, 5: 5배수) */
+		where sid = #{sid}	/* 서비스ID */
+	</update>
+	
+	<!-- FIDO메타데이터 정보 수정 -->
+	<update id="updateMetaData" parameterType="tbSpMetaDataVO">
+		/* AuthPolicyMgmtMapper.updateMetaData */
+		update tb_sp_metadata set
+				aaid = #{aaId, jdbcType=VARCHAR}												/* AAID */
+			,	description = #{description, jdbcType=VARCHAR}									/* 설명 */
+			,	autheticatorversion = #{autheticatorVersion, jdbcType=VARCHAR}					/* 버전 */
+			,	upv = #{upv, jdbcType=VARCHAR}													/* 프로토콜 버전 */
+			,	assertionscheme = #{assertionScheme, jdbcType=VARCHAR}							/* 스키마 */
+			,	autheticationalg = #{autheticationAlg, jdbcType=VARCHAR}						/* 알고리즘 */
+			,	publickeyalgenc = #{publicKeyAlgEnc, jdbcType=VARCHAR}							/* 공개키알고리즘 */
+			,	attestationtypes = #{attestationTypes, jdbcType=VARCHAR}						/* ATTESTATION TYPE */
+			,	userverificationdetails = #{userVerificationDetails, jdbcType=VARCHAR}			/* 인증 TYPE */
+			,	keyprotection = #{keyProtection, jdbcType=VARCHAR}								/* Key 보호 수준 */
+			,	matcherprotection = #{matcherProtection, jdbcType=VARCHAR}						/* Matcher 보호 수준 */
+			,	attestationrootcertificates = #{attestationRootCertificates, jdbcType=VARCHAR}	/* 인증서 */
+			,	osgubun = #{osGubun, jdbcType=VARCHAR}											/* OS구분 */
+			,	companyinfo = #{companyInfo, jdbcType=VARCHAR}									/* 단말기 회사정보 */
+			,	modelinfo = #{modelInfo, jdbcType=VARCHAR}										/* 단말기 모델정보 */
+			<!-- ,	oidnum = #{oidnum}																/* 서비스 기관 번호 */ -->
+		where num = #{num}	/* 번호 */
+	</update>
+	
+	<!-- 메타데이터 삭제 -->
+	<delete id="deleteMetaData" parameterType="tbSpMetaDataVO">
+		/* AuthPolicyMgmtMapper.deleteMetaData */
+		delete from tb_sp_metadata where num = #{num}	/* 번호 */
+	</delete>
+
+
+	<!-- 인증 정책 정보 조회 -->
+	<select id="selectPolicyByPk" parameterType="commonVO" resultType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.selectPolicy */
+		select <include refid="policyColumns"/>
+		from TB_SP_POLICY T1
+		<include refid="policyJoin"/>
+		where T1.sid = #{sid}	/* 서비스ID */
+	</select>
+
+	<!-- 인증 정책 정보 조회 -->
+	<select id="selectPolicyForList" parameterType="commonVO" resultType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.selectPolicyForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						 select <include refid="policyColumns"/>
+						from TB_SP_POLICY T1
+						<!-- <include refid="policyJoin"/>
+						<include refid="policyListWhere"/>
+						 -->
+						 <include refid="policyLogJoin"/>
+						<include refid="policyLogListWhere"/>
+						
+				) t
+		) t		order by sid desc
+		limit #{pageSet} offset #{offSet} 
+
+	</select>
+<!--
+
+-->
+		<!-- 인증 정책 로우 카운트 조회 -->
+	<select id="selectPolicyForRowCount" resultType="int">
+		/* AuthPolicyMgmtMapper.selectPolicyForRowCount */
+		select count(*)
+		from tb_sp_policy
+	</select>
+	
+
+		<!-- 인증 정책 로그 정보 저장 insert ~ select -->
+	<insert id="insertPolicyLogByPk" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.insertPolicyLogByPk */
+		insert into TB_SP_POLICY_LOG (
+				num						/* 번호 */
+			,	sid						/* 서비스ID */
+			,	authpolicy				/* 인증 정책 */
+			,	multipolicy				/* 다중인증 정책 */
+			<!-- ,   fidootppolicy			/* FIDO OTP 정책 */ -->
+			,   otpmodpolicy			/* MOTP 보정 정책(1:자동 보정정책) */
+			,   otplogpolicy			/* OTP 로그 정책(0:저장안함, 1:저장, 2:실패로그만 저장, 4: 성공로그만 저장, 8: S/N조회 로그만 저장) */
+			,   otpcyclepolicy			/* OTP 체크 주기 정책(30: 30초, 60: 60초) */
+		    ,   otpcheckcntpolicy		/* OTP 체크 횟수 정책(3: 3배수, 5: 5배수) */
+			,	adminid					/* 행위자ID */
+			,	adminname				/* 행위자명 */
+			,	setdatetime				/* 행위일시 */
+			,	adminip					/* 행위자IP */
+			,	admincomname			/* 행위자COMNAME */
+			,	actiontype				/* 행위타입 */
+			,	conduct					/* 행위 */
+			,	conductvalue			/* 행위값 */
+			
+		)
+			select ( select * from ( select COALESCE(max(num), 0)+1 from TB_SP_POLICY_LOG a ) a )	/* 번호 */
+				,	#{sid}								/* 서비스ID */
+				,	1									/* 인증 정책 */
+				,	0									/* 시스템ID 정책 */
+				<!-- ,   #{fidoOtpPolicy}		/* FIDO OTP 정책 */ -->
+				,   cast(#{otpModPolicy} as integer)	/* MOTP 보정 정책(1:자동 보정정책) */
+				,   cast(#{otpLogPolicy} as integer)	/* OTP 로그 정책(0:저장안함, 1:저장, 2:실패로그만 저장, 4: 성공로그만 저장, 8: S/N조회 로그만 저장) */
+				,   cast(#{otpCyclePolicy} as integer)					/* OTP 체크 주기 정책(30: 30초, 60: 60초) */
+				,   cast(#{otpCheckCntPolicy} as integer)				/* OTP 체크 횟수 정책(3: 3배수, 5: 5배수) */
+				,	#{adminId}							/* 행위자ID */
+				,	#{adminName}						/* 행위자명 */
+				,	#{setDateTime}						/* 행위일시 */
+				,	#{adminIp}							/* 행위자IP */
+				,	#{adminComName}						/* 행위자COMNAME */
+				,	cast(#{actionType} as integer)		/* 행위타입 */
+				,	#{conduct, jdbcType=VARCHAR}		/* 행위 */
+				,	#{conductValue, jdbcType=VARCHAR}	/* 행위값 */
+			from TB_SP_POLICY
+			where sid = #{sid}	/* 서비스ID */
+	</insert>
+
+	<!-- 인증 정책 정보 삭제 -->
+	<delete id="deletePolicy" parameterType="tbSpPolicyVO">
+		/* AuthPolicyMgmtMapper.deletePolicy */
+		delete from TB_SP_POLICY where sid = #{sid}	/* 서비스ID */
+	</delete>
+
+</mapper>

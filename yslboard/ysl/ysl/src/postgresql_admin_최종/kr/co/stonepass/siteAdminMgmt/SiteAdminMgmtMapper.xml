@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.siteAdminMgmt.dao.SiteAdminMgmtMapper">
+	
+	<!-- 관리자관리 조인 -->
+	<!-- <sql id="adminJoin">
+		left outer join tb_sp_auth_mgmt T2  on T1.admintype = T2.admintype
+	</sql> -->
+	<sql id="adminJoin2">
+		left outer join tb_sp_organization T3  on (T1.oidkey = T3.oidkey) 
+	</sql>
+	
+	<!-- 관리자관리 검색조건 -->
+	<sql id="adminListWhere">
+		<where>
+			<!-- 리스트 설정 -->
+			<!-- <if test="siteManager != null and siteManager != ''"> and T1.siteManager = 2 </if> 리스트 구분 -->
+			<!-- <if test="siteManager >= 3 ">
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and T1.OIDKEY = #{svcOrganizationKey}</if>
+			</if> -->
+			<!-- 무조건 실행 -->
+			<!-- <if test="siteManager != null and siteManager != ''"> and T1.adminType > 4 </if> -->
+			<if test="siteManager != null and siteManager != ''"> and T1.oidkey = '000' </if>
+			<!-- 상단 검색 -->
+			<!-- <if test="svcOrganization != null and svcOrganization != ''"> and T3.OIDNAME = #{svcOrganization}</if> -->
+			<!-- <if test="condAdminType != null and condAdminType != ''"> and T2.auth_nm = #{condAdminType}</if> -->
+			<if test="adminStatus != null and adminStatus != ''"> and T1.adminstatus = #{adminStatus}</if>
+			<if test="condSearchNm != null and condSearchNm != ''">
+				<if test="condSearchType == '01'"> and T1.adminid  like concat('%',#{condSearchNm},'%')</if> 
+				<if test="condSearchType == '02'"> and T1.adminname  like concat('%',#{condSearchNm},'%')</if> 
+			</if>
+		</where>
+	</sql>
+	
+	<!-- 관리자 정보 로우 카운트 조회 -->
+	<select id="selectAdminForRowCount" parameterType="commonVO" resultType="int">
+		/* AdminMgmtMapper.selectAdminForRowCount */
+		
+			select count(*)
+			from tb_sp_admin T1
+		<!-- <include refid="adminJoin"/> -->
+		<include refid="adminJoin2"/>
+		<include refid="adminListWhere"/>
+	</select>
+	
+	<!-- 관리자 정보 리스트 조회 -->
+	<select id="selectAdminForList" parameterType="commonVO" resultType="tbSpAdminVO">
+		/* AdminMgmtMapper.selectAdminForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						select T1.adminid									/* 관리자ID */
+							 , T1.regdatetime								/* 등록일시 */
+							 , T1.regipstatus								/* 관리자IP사용여부 */
+							 , T1.regip										/* 관리자IP */
+							 , T1.admintype									/* 관리자 TYPE */
+							 , T1.adminname									/* 관리자명 */
+							<!--  , T1.svcnum									/* 서비스NUM */ -->
+							 , T1.adminstatus								/* 계정상태 */
+							 , T1.uptdatetime								/* 수정일 */
+							 , T1.login_fail_number as loginFailNumber		/* 로그인 오류횟수 */
+							 , T1.pwd_change_datetime as pwdChangeDateTime	/* 비밀번호 변경일시 */
+							 , T1.sitemanager as adminLevel					/* 권한명 */
+							 , T3.OIDNAME svcOrganization					/* 서비스 업체명  */
+						from tb_sp_admin T1
+						<!-- <include refid="adminJoin"/> -->
+						<include refid="adminJoin2"/>
+						<include refid="adminListWhere"/>
+						<!-- order by T1.uptdatetime desc -->
+				) t
+		) t	order by T.uptdatetime desc
+		limit #{pageSet} offset #{offSet}
+	</select>
+	
+	<!-- 주어지 PK에 맞는 관리자 정보 조회 -->
+	<select id="selectAdminByPk" parameterType="tbSpAdminVO" resultType="tbSpAdminVO">
+		/* AdminMgmtMapper.selectAdminByPk */
+		select adminid									/* 관리자ID */
+			 , adminpw									/* 비번 */
+			 , regdatetime								/* 등록일시 */
+			 , regipstatus								/* 관리자IP사용여부 */
+			 , regip									/* 관리자IP */
+			 , admintype								/* 관리자 TYPE */
+			 , adminname								/* 관리자명 */
+			 <!-- , svcnum									/* 서비스NUM */ -->
+			 , adminstatus								/* 계정상태 */
+			 , uptdatetime								/* 수정일시 */
+			 , login_fail_number as loginFailNumber		/* 로그인 오류횟수 */
+			 , pwd_change_datetime as pwdChangeDateTime	/* 비밀번호 변경일시 */
+			 , siteManager adminLevel
+		from tb_sp_admin
+		where adminid = #{adminId}	<!-- and oidkey = #{svcOrganizationKey} -->						/* 관리자ID */
+	</select>
+	
+	<!-- 주어지 PK에 맞는 관리자 정보 로우 카운트 조회 -->
+	<select id="selectAdminForRowCountByPk" parameterType="tbSpAdminVO" resultType="int">
+		/* AdminMgmtMapper.selectAdminForRowCountByPk */
+		select count(*)
+		from tb_sp_admin
+		where adminid = #{adminId}	<!-- and oidkey = #{svcOrganizationKey} -->	/* 관리자ID */
+	</select>
+	
+	<!-- 관리자 정보 저장 -->
+	<insert id="insertAdmin" parameterType="tbSpAdminVO">
+		/* AdminMgmtMapper.insertAdmin */
+		insert into tb_sp_admin (
+				adminid					/* 관리자ID */
+			,	adminpw					/* 관리자PW */
+			,	regdatetime				/* 등록일시 */
+			, 	regipstatus				/* 관리자IP사용여부 */
+			, 	regip					/* 관리자IP */
+			, 	admintype				/* 관리자 TYPE */
+			, 	adminname				/* 관리자명 */
+			<!-- ,	svcnum					/* 서비스NUM */ -->
+			, 	adminstatus				/* 계정상태 */
+			, 	uptdatetime				/* 수정일시 */
+			,	pwd_change_datetime		/* PW변경일시 */
+			,	pwd_init_yn				/* 비밀번호 초기화 유무 */
+			,	pwd_init_datetime		/* 비밀번호 초기화일시 */
+			,	OIDKEY					/* 서비스 업체키값  */
+			,	sitemanager				/* 관리자 등급  */
+		) values (
+				#{adminId}				/* 관리자ID */
+			,	#{adminPw}				/* 관리자PW */
+			,	#{regDateTime}			/* 등록일시 */
+			,	#{regIpStatus}			/* 관리자IP사용여부 */
+			,	#{regIp}				/* 관리자IP */
+			,	cast(#{adminType} as integer)			/* 관리자 TYPE */
+			,	#{adminName}			/* 관리자명 */
+			<!-- <if test="svcNum == null or svcNum == ''">
+			,	'0'						/* 서비스NUM */
+			</if>
+			<if test="svcNum != null and svcNum != ''">
+			,	#{svcNum}				/* 서비스NUM */
+			</if> -->
+			,	#{adminStatus}			/* 계정상태 */
+			,	#{uptDateTime}			/* 수정일시 */
+			,	#{pwdChangeDateTime}	/* PW변경일시 */
+			,	#{pwdInitYn}			/* 비밀번호 초기화 유무 */
+			,	#{pwdInitDateTime}		/* 비밀번호 초기화일시 */
+			,	#{svcOrganizationKey}	/* 서비스 업체키값  */
+			,	( select sitemanager from tb_sp_auth_mgmt where admintype = cast(#{adminType} as integer))		/* 관리자 등급  */
+		)
+	</insert>
+	
+	<!-- 관리자 로그 정보 저장 -->
+	<insert id="insertAdminLog" parameterType="tbSpAdminVO">
+		/* AdminMgmtMapper.insertAdminLog */
+		insert into tb_sp_adminlog (
+				num						/* 번호 */
+			,	targetid				/* 관리자ID */
+			, 	regipstatus				/* 관리자IP사용여부 */
+			, 	regip					/* 관리자IP */
+			, 	admintype				/* 관리자 TYPE */
+			, 	targetname				/* 관리자명 */
+			,	svcnum					/* 서비스NUM */
+			, 	adminstatus				/* 계정상태 */
+			,	pwd_change_datetime		/* PW변경일시 */
+			,	pwd_init_yn				/* 비밀번호 초기화 유무 */
+			,	pwd_init_datetime		/* 비밀번호 초기화일시 */
+			,	adminid					/* 행위자ID */
+			,	adminname				/* 행위자명 */
+			,	setdatetime				/* 행위일시 */
+			,	adminip					/* 행위자IP */
+			,	admincomname			/* 행위자COMNAME */
+			,	actiontype				/* 행위타입 */
+			,	conduct					/* 행위 */
+			,	conductvalue			/* 행위값 */
+		) values (
+				( select * from ( select coalesce(max(num), 0)+1 from tb_sp_adminlog a ) a )	/* 번호 */
+			,	#{adminId}											/* 관리자ID */
+			,	#{regIpStatus, jdbcType=VARCHAR}					/* 관리자IP사용여부 */
+			,	#{regIp, jdbcType=VARCHAR}							/* 관리자IP */
+			,	cast(#{adminType} as integer)						/* 관리자 TYPE */
+			,	#{adminName, jdbcType=VARCHAR}						/* 관리자명 */
+			<if test="svcNum == null or svcNum == ''">
+			,	'0'													/* 서비스NUM */
+			</if>
+			<if test="svcNum != null and svcNum != ''">
+			,	#{svcNum}											/* 서비스NUM */
+			</if>
+			,	#{adminStatus, jdbcType=VARCHAR}					/* 계정상태 */
+			,	#{pwdChangeDateTime}				/* PW변경일시 */
+			,	#{pwdInitYn, jdbcType=VARCHAR}						/* 비밀번호 초기화 유무 */
+			,	#{pwdInitDateTime}				/* 비밀번호 초기화일시 */
+			,	#{actionId}											/* 행위자ID */
+			,	#{actionName}										/* 행위자명 */
+			,	#{setDateTime}										/* 행위일시 */
+			,	#{adminIp}											/* 행위자IP */
+			,	#{adminComName}										/* 행위자COMNAME */
+			,	cast(#{actionType} as integer)										/* 행위타입 */
+			,	#{conduct, jdbcType=VARCHAR}						/* 행위 */
+			,	#{conductValue, jdbcType=VARCHAR}					/* 행위값 */
+		)
+	</insert>
+	
+	<!-- 관리자 정보 수정 -->
+	<update id="updateAdmin" parameterType="tbSpAdminVO">
+		/* AdminMgmtMapper.updateAdmin */
+		update tb_sp_admin set
+				adminname = #{adminName}		/* 관리자명 */
+			,	admintype = cast(#{adminType} as integer)		/* 관리자 Type */
+			, 	regipstatus = #{regIpStatus}	/* 관리자IP사용여부 */
+			,	regip = #{regIp}				/* 관리자IP */
+			,	adminstatus = cast(#{adminStatus} as varchar)	/* 계정상태 */
+			,	uptdatetime = #{uptDateTime}	/* 수정일시 */
+			,	sitemanager = ( select sitemanager from tb_sp_auth_mgmt where admintype = cast(#{adminType} as integer))		/* 관리자 등급  */
+			<!-- <if test="svcNum == null or svcNum == ''">
+			,	svcnum = 0						/* 서비스NUM */
+			</if>
+			<if test="svcNum != null and svcNum != ''">
+			,	svcnum = #{svcNum}				/* 서비스NUM */
+			</if> -->
+			<if test="adminPw != null and adminPw != ''">, adminpw = #{adminPw}	/* 관리자PW */</if>
+			<if test="pwdInitYn != null and pwdInitYn != ''">, pwd_init_yn = #{pwdInitYn}	/* 비밀번호 초기화 유무 */</if>
+			<if test="pwdInitDateTime != null">, pwd_init_datetime = #{pwdInitDateTime}		/* 비밀번호 초기화일시 */</if>
+		where adminid = #{adminId}	<!-- and oidkey = #{svcOrganizationKey} -->				/* 관리자ID */
+	</update>
+	
+	<!-- 관리자 정보 초기화 -->
+	<update id="updateAdminInit" parameterType="tbSpAdminVO">
+		/* AdminMgmtMapper.updateAdmin */
+		update tb_sp_admin set
+				adminpw = #{adminPw}						/* 관리자PW */
+			,	adminstatus = #{adminStatus}				/* 계정상태 */
+			,	login_fail_number = #{loginFailNumber}		/* 비밀번호 오류 횟수 */
+			,	pwd_change_datetime = #{pwdChangeDateTime}	/* 비밀번호 변경일시 */
+			,	pwd_init_yn = #{pwdInitYn}					/* 비밀번호 초기화 유무 */
+			,	pwd_init_datetime = #{pwdInitDateTime}		/* 비밀번호 초기화일시 */
+		where adminid = #{adminId}	<!-- and oidkey = #{svcOrganizationKey} -->							/* 관리자ID */
+	</update>
+
+</mapper>

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.logHisMgmt.dao.RegLogHisMapper">
+
+	<sql id="regLogJoin">
+		left outer join tb_sp_service T2 on T1.sid = T2.svcnum 
+		left outer join tb_sp_organization T3 on (T2.oidkey = T3.oidkey) 
+		<!-- left outer join tb_sp_organization T3 on (T2.sid = T3.svcnum) -->
+		<!-- left outer join tb_sp_admin T4 on (T1.userid = T4.adminid) -->
+	</sql>
+	
+	<sql id="regLogListWhere">
+		<where>
+				T1.logindatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+				and T1.logindatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			<!-- <if test="siteManager != null and siteManager != ''"> and T4.siteManager <![CDATA[ < ]]> 3</if> 리스트 구분 -->
+			<!-- <if test="adminType != null and adminType != ''"> and T1.sid = #{svcNum}</if> -->
+			
+			<if test="siteManager == 3 "><!-- 업체 구분 -->
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and T3.OIDKEY = #{svcOrganizationKey}</if>
+			</if>
+			<if test="siteManager ==  4 "><!-- 업체 구분 -->
+				and svcnum in ( 
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				)
+			</if>
+			<!-- 검색 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and T3.OIDNAME = #{svcOrganization}</if> <!-- 셀렉트 선택 -->
+			<if test="condSearchNm != null and condSearchNm != ''"> and T1.userid  like concat('%',#{condSearchNm},'%')</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and T1.logindatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+				and T1.logindatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			</if>
+		</where>
+	</sql>
+	<sql id="regLogListWhere2">
+		<where>
+			<!-- <if test="siteManager != null and siteManager != ''"> and T4.siteManager <![CDATA[ < ]]> 3</if> 리스트 구분 -->
+			<!-- <if test="adminType != null and adminType != ''"> and T1.sid = #{svcNum}</if> -->
+			
+			<if test="siteManager == 3 "><!-- 업체 구분 -->
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and T3.OIDKEY = #{svcOrganizationKey}</if>
+			</if>
+			<if test="siteManager ==  4 "><!-- 업체 구분 -->
+				and svcnum in ( 
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				)
+			</if>
+			<!-- 검색 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and T3.OIDNAME = #{svcOrganization}</if> <!-- 셀렉트 선택 -->
+			<if test="condSearchNm != null and condSearchNm != ''"> and T1.userid  like concat('%',#{condSearchNm},'%')</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and T1.regdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+				and T1.regdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			</if>
+		</where>
+	</sql>
+	
+	<!-- 등록/해지 로그 로우카운트 조회 -->
+	<select id="selectRegLogForRowCount" parameterType="commonVO" resultType="int">
+		select count(*)
+			from (
+				select T1.userid
+					from  tb_sp_reglog T1
+					<include refid="regLogJoin"/>
+					<include refid="regLogListWhere"/>
+				union all
+				select T1.userid
+					from tb_sp_motpreglog T1
+					<include refid="regLogJoin"/>
+					<include refid="regLogListWhere2"/>
+			) t
+	</select>
+	
+	<!-- 등록/해지 로그 리스트 조회 -->
+	<select id="selectRegLogForList" parameterType="commonVO" resultType="tbSpRegLogVO">
+		select t.*
+		from (
+				select t.*
+				from (
+						select T1.userid
+							 , case when T2.svcname is null then T1.sid else T2.svcname end as sid
+							 , T1.logindatetime
+							 , T1.logintype
+							 , T1.deviceinfo
+							 , T1.biotype
+							 , T3.OIDNAME svcOrganization
+						from tb_sp_reglog T1
+						<include refid="regLogJoin"/>
+						<include refid="regLogListWhere"/>
+						
+				) t
+		) t	
+		union all
+		select t.*
+		from (
+				select t.*
+				from (
+						select T1.userid
+							 , case when T2.svcname is null then T1.sid else T2.svcname end as sid
+							 , T1.regdatetime
+							 , T1.updateflag
+							 , T1.deviceinfo
+							 , 'OTP'
+							 , T3.OIDNAME svcOrganization
+						from tb_sp_motpreglog T1
+						<include refid="regLogJoin"/>
+						<include refid="regLogListWhere2"/>
+						
+				) t
+		) t
+		order by logindatetime desc
+		limit #{pageSet} offset #{offSet}
+	</select>
+	
+	<!-- 등록/해지 전체 리스트 조회 -->
+	<select id="selectRegLogForExcelList" parameterType="commonVO" resultType="tbSpRegLogVO">
+		select t.* 
+			from (
+				select T1.userid
+						 , case when T2.svcname is null then T1.sid else T2.svcname end as sid
+						 , T1.signature
+						 , T1.userkey
+						 , T1.aaid
+						 , T1.keyid
+						 , T1.logindatetime
+						 , T1.logintype
+						 , T1.deviceinfo
+						 , T1.deviceid
+						 , T1.biotype
+						 <if test="siteManager != 3 or siteManager != 4 "> , T3.oidname svcorganization  </if>
+					from  tb_sp_reglog T1
+					<include refid="regLogJoin"/>
+					<include refid="regLogListWhere"/>
+				union all
+				select T1.userid
+					 , case when T2.svcname is null then T1.sid else T2.svcname end as sid
+					 , null signature
+					 , null userkey
+					 , null aaid
+					 , null keyid
+					 , T1.REGDATETIME as logindatetime
+					 , T1.UPDATEFLAG as logintype
+					 , null deviceinfo
+					 , null deviceid
+					 , 'MOTP' as biotype
+					 <if test="siteManager != 3 or siteManager != 4 ">, T3.OIDNAME svcOrganization	</if>
+				from tb_sp_motpreglog T1
+				<include refid="regLogJoin"/>
+				<include refid="regLogListWhere2"/>
+			) t
+		order by t.logindatetime desc
+	</select>
+
+</mapper>

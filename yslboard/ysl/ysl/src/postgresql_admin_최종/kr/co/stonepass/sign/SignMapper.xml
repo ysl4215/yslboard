@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.sign.dao.SignMapper">
+
+	<resultMap id="TbSpAdminResultMap" type="TbSpAdminVO">
+		<id column="adminid" property="adminId" javaType="String"/>
+		<result column="adminname" property="adminName" javaType="String"/>
+		<result column="adminpw" property="adminPw" javaType="String"/>
+		<result column="regdatetime" property="regDateTime" javaType="Date"/>
+		<result column="regip" property="regIp" javaType="String"/>
+		<result column="admintype" property="adminType" javaType="String"/>
+		<result column="adminstatus" property="adminStatus" javaType="String"/>
+		<result column="login_fail_number" property="loginFailNumber" javaType="int"/>
+		<result column="pwd_change_datetime" property="pwdChangeDateTime" javaType="Date"/>
+		<result column="pwd_change_period" property="pwdChagePeriod" javaType="String"/>
+		<result column="pwd_init_yn" property="pwdInitYn" javaType="String"/>
+		<result column="pwd_init_datetime" property="pwdInitDateTime" javaType="Date"/>
+		<result column="pwd_init_period" property="pwdInitPeriod" javaType="String"/>
+	</resultMap>
+	
+	<!-- 관리자 정보 조회 -->
+	<select id="selectSign" parameterType="signVO" resultType="tbSpAdminVO">
+		select t1.adminid
+			 , t1.adminname
+			 , t1.adminpw
+			 , t1.regdatetime
+			 , t1.regipstatus
+			 , t1.regip
+			 , t1.admintype
+			 , t1.adminstatus
+			 , t1.svcnum 
+			 , t1.siteManager
+			 , t1.oidkey svcOrganizationKey
+			 , t3.OIDNAME svcOrganization
+			 , t1.login_fail_number as loginFailNumber
+			 , cast((now() - t1.pwd_change_datetime) as char) as pwdChangePeriod
+			 , cast((now() - t1.pwd_init_datetime)  as char) as pwdInitPeriod
+			 , coalesce(pwd_init_yn, 'N') as pwdInitYn
+			 , t2.auth_nm as authNm
+			 , t3.sitelogo
+			 , t3.color_pick as colorPick
+		from tb_sp_admin t1
+		inner join tb_sp_auth_mgmt t2 on t1.admintype = t2.admintype
+		left outer join tb_sp_organization t3 on t1.oidkey = t3.OIDKEY
+		where t1.adminid = #{userId}
+	</select>
+	
+	<!-- 관리자 로그인 이력 저장 -->
+	<insert id="insertLoginLog" parameterType="signVO">
+		insert into tb_sp_loginlog (
+				adminid
+			,	adminname
+			,	setdatetime
+			,	adminip
+			,	admincomname
+			,	loginstatus
+		) values (
+				#{userId}
+			,	#{adminName, jdbcType=VARCHAR}
+			,	#{setDateTime}
+			,	#{adminIp}
+			,	#{adminComName}
+			,	#{signStatus, jdbcType=VARCHAR}
+		)
+	</insert>
+	
+	<update id="updateAdminSetAdminStatus" parameterType="tbSpAdminVo">
+		update tb_sp_admin set
+				adminstatus = #{adminStatus}
+			,	login_fail_number = #{loginFailNumber}
+		where adminid = #{adminId}	<!-- and oidkey = #{svcOrganizationKey} -->
+	</update>
+	
+	<update id="updateAdminSetAdminPw" parameterType="tbSpAdminVo">
+		update tb_sp_admin set
+				adminpw = #{adminPw}
+			,	pwd_change_datetime = #{pwdChangeDateTime}
+			,	pwd_init_yn = #{pwdInitYn}
+			,	pwd_init_datetime = #{pwdChangeDateTime}
+		where adminid = #{adminId}	<!-- and oidkey = #{svcOrganizationKey} -->
+		  and adminpw = #{oldAdminPw}
+	</update>
+
+</mapper>

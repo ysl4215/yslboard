@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.policyReload.dao.PolicyReloadMapper">
+	
+	<!-- 정책 연동 URL 로우 카운트 조회 -->
+	<select id="selectPolicyReloadForRowCount" parameterType="commonVO" resultType="int">
+		/* PolicyReloadMapper.selectPolicyReloadForRowCount */
+		select count(*)
+		from tb_sp_policy_reload
+	</select>
+	
+	<!-- 정책 연동 URL 리스트 조회  -->
+	<select id="selectPolicyReloadForList" parameterType="commonVO" resultType="tbSpPolicyReloadVO">
+		/* PolicyReloadMapper.selectPolicyReloadForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						select prnum								/* 정책번호 */
+							 , policy_name as policyName			/* 정책명 */
+							 , policy_reload_url as policyReloadUrl	/* 정책 연동 URL */
+							 , regdatetime							/* 등록일시 */
+							 , uptdatetime							/* 수정일시 */
+						from tb_sp_policy_reload
+						order by prnum desc							/* 정책번호 */
+				) t				
+		) t
+		 limit #{pageSet} offset #{offSet}  
+	</select>
+	
+	<!-- 정책 연동 조회 -->
+	<select id="selectPolicyReloadByPk" parameterType="tbSpPolicyReloadVO" resultType="tbSpPolicyReloadVO">
+		/* PolicyReloadMapper.selectPolicyReloadByPk */
+		select prnum								/* 정책번호 */
+			 , policy_name as policyName			/* 정책명 */
+			 , policy_reload_url as policyReloadUrl	/* 정책 연동 URL */
+			 , regdatetime							/* 등록일시 */
+			 , uptdatetime							/* 수정일시 */
+		from tb_sp_policy_reload
+		 where prnum = CAST(#{prNum} as integer)						/* 정책번호 */
+	</select>
+	
+	<!-- 정책 연동 URL 정보 저장 -->
+	<insert id="insertPolicyRealod" parameterType="tbSpPolicyReloadVO">
+		/* PolicyReloadMapper.insertPolicyRealod */
+		insert into tb_sp_policy_reload (
+				policy_name			/* 정책명 */
+			,	policy_reload_url	/* 정책 연동 URL */
+			,	regdatetime			/* 등록일시 */
+		) values (
+				#{policyName}		/* 정책명 */
+			,	#{policyReloadUrl}	/* 정책 연동 URL */
+			,	now()				/* 등록일시 */
+		)
+	</insert>
+	
+	<!-- 정책 연동 URL 정보 수정 -->
+	<update id="updatePolicyReload" parameterType="tbSpPolicyReloadVO">
+		/* PolicyReloadMapper.updatePolicyReload */
+		update tb_sp_policy_reload set
+				policy_name = #{policyName}				/* 정책명 */
+			,	policy_reload_url = #{policyReloadUrl}	/* 정책 연동 URL */
+			,	uptdatetime = now()						/* 수정일시 */
+		where prnum = CAST(#{prNum} as integer)			/* 정책번호 */
+	</update>
+	
+	<!-- 정책 연동 URL 삭제 -->
+	<delete id="deletePolicyReload" parameterType="tbSpPolicyReloadVO">
+		/* PolicyReloadMapper.deletePolicyReload */
+		delete from tb_sp_policy_reload where prnum = CAST(#{prNum} as integer)
+	</delete>
+
+</mapper>

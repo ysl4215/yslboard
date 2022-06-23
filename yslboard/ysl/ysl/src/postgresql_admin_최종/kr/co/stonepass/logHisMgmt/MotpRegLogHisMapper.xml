@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- MOTP 사용자 등록 로그 -->
+<mapper namespace="kr.co.stonepass.admin.logHisMgmt.dao.MotpRegLogHisMapper">
+
+	<sql id="motpRegLogJoin">
+		left outer join TB_SP_SERVICE T2 on T1.sid = T2.svcnum 
+	</sql>
+	
+	<sql id="motpRegLogListWhere">
+		<where>
+			<if test="adminType != null and adminType != ''"> and T1.sid = #{svcNum}</if>
+			<if test="condSearchNm != null and condSearchNm != ''"> and T1.userid = #{condSearchNm}</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and T1.regdatetime <![CDATA[ >= ]]> to_date(#{condSearchSdt}||'000000', 'yyyymmddhh24miss') 
+				and T1.regdatetime <![CDATA[ <= ]]> to_date(#{condSearchEdt}||'235959', 'yyyymmddhh24miss')
+			</if>
+		</where>
+	</sql>
+	
+	<!-- 등록/해지 로그 로우카운트 조회 -->
+	<select id="selectMotpRegLogForRowCount" parameterType="commonVO" resultType="int">
+		select count(*)
+		from TB_SP_MOTPREGLOG T1
+		<include refid="motpRegLogJoin"/>
+		<include refid="motpRegLogListWhere"/>
+	</select>
+	
+	<!-- 등록/해지 로그 리스트 조회 -->
+	<select id="selectMotpRegLogForList" parameterType="commonVO" resultType="tbSpMotpRegLogVO">
+		select t.*
+		from (
+				select t.*
+				from (
+						 select T1.userid		/* 사용자ID */
+							 , T1.sid			/* 시스템ID */
+							 , T1.regdatetime	/* 인증일자 */
+							 , T1.updateflag	/* UPDATEFLAG - 1: SN 갱신 , 0: SN 비갱신, 2: 조회 */
+							 , T2.svcname		/* 서비스명 */
+						from TB_SP_MOTPREGLOG T1
+						<include refid="motpRegLogJoin"/>
+						<include refid="motpRegLogListWhere"/>
+						order by regdatetime desc
+				) t
+		) t limit #{pageSet} offset #{offSet};
+	</select>
+	
+	<!-- 등록/해지 전체 리스트 조회 -->
+	<select id="selectMotpRegLogForExcelList" parameterType="commonVO" resultType="tbSpMotpRegLogVO">
+		select T1.userid		/* 사용자ID */
+			 , T1.sid			/* 시스템ID */
+			 , T1.regdatetime	/* 인증일자 */
+			 , T1.updateflag	/* UPDATEFLAG - 1: SN 갱신 , 0: SN 비갱신, 2: 조회 */
+			 , T2.svcname		/* 서비스명 */
+		from TB_SP_MOTPREGLOG T1
+		<include refid="motpRegLogJoin"/>
+		<include refid="motpRegLogListWhere"/>
+		order by regdatetime desc
+	</select>
+
+</mapper>

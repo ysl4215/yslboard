@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.siteAuthMgmt.dao.SiteAuthMgmtMapper">
+
+	<!-- 관리자관리 조인 -->
+	<sql id="selectAuthForJoin">
+		 T1 left outer join tb_sp_admin T2
+		 on (T1.admintype = T2.admintype)
+
+		 left outer join tb_sp_organization T3
+		  on (T2.oidkey = T3.oidkey)  
+		 <!-- on (T2.svcnum = T3.svcnum) -->
+	</sql>
+	<sql id="selectAuthForWhere">
+		<where>
+			<!-- <if test="siteManager != null and siteManager != ''"> and T1.siteManager <![CDATA[ <= ]]> 2 </if> 리스트 구분 -->
+			<!-- <if test="siteManager != null and siteManager != ''"> and T1.admintype not in('2') </if> 무조건 실행 (업체 관리자 샘플 베제) -->
+			<!-- <if test="svcOrganization != null and svcOrganization != ''"> and T3.OIDNAME = #{svcOrganization}</if> 셀렉트 선택 -->
+			<if test="siteManager != null and siteManager != ''"> and T2.oidkey = '000'  </if>  <!-- 리스트 구분 -->
+		</where>
+	</sql>
+	
+	<!-- 권한 정보 로우카운트 조회 -->
+	<select id="selectAuthForRowCount" parameterType="tbSpAuthMgmtVO" resultType="int"> 
+		/* AuthMgmtMapper.selectAuthForRowCount */
+		select count(*) from tb_sp_auth_mgmt
+		<include refid="selectAuthForJoin"/>
+		<include refid="selectAuthForWhere"/>
+	</select>
+	
+	<!-- 권한 정보 리스트 조회 -->
+	<select id="selectAuthForList" parameterType="tbSpAuthMgmtVO" resultType="tbSpAuthMgmtVO">
+		/* AuthMgmtMapper.selectAuthForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						select distinct T1.admintype	/* 권한타입 */
+							 , T1.auth_nm as authNm		/* 권한명 */
+							 , T1.regdatetime			/* 작성일시 */
+							 , T1.uptdatetime			/* 수정일시 */
+							 , T1.sitemanager as adminLevel			/* 관리자 등급 */
+							 , T3.oidname as svcOrganization	/* 서비스 업체명 */
+						from tb_sp_auth_mgmt
+						<include refid="selectAuthForJoin"/>
+						<include refid="selectAuthForWhere"/>
+						order by regdatetime desc
+				) t
+		) t	order by regdatetime desc
+		<if test="pageSet != null and pageSet > 0">
+			limit #{pageSet} offset #{offSet} 
+		</if>
+	</select>
+	
+	<!-- 주어진 권한코드에 해당하는 메뉴 정보 리스트 조회 -->
+	<select id="selectAuthMenuForListByAuthCd" parameterType="tbSpAuthMgmtVO" resultType="tbSpAuthMenuMgmtVO">
+		/* AuthMgmtMapper.selectAuthMenuForListByAuthCd */
+		select amm.admintype			/* 권한타입 */
+			 , amm.menu_cd as menuCd	/* 메뉴코드 */
+			 , mm.p_menu_cd as pMenuCd	/* 상위 메뉴코드 */
+		from tb_sp_auth_menu_mgmt amm
+		inner join tb_sp_menu_mgmt mm on amm.menu_cd = mm.menu_cd
+		where amm.admintype = cast(#{adminType} as integer)	/* 권한코드 */
+	</select>
+	
+	<!-- 주어진 PK에 맞는 권한 정보 조회 -->
+	<select id="selectAuthByPk" parameterType="java.lang.String" resultType="tbSpAuthMgmtVO">
+		/* AuthMgmtMapper.selectAuthByPk */
+		select admintype						/* 권한타입 */
+			 , auth_nm as authNm				/* 권한명 */
+			 , sitemanager adminLevel			/* 권한등급 */ 
+		from tb_sp_auth_mgmt
+		where admintype = cast(#{adminType} as integer)	/* 권한코드 */
+	</select>
+	
+	<!-- 권한관리 관계테이블에 등록 된 로우 카운트 조회 -->
+	<select id="selectAuthForRowCountByRelation" parameterType="tbSpAuthMgmtVO" resultType="int">
+		/* AuthMgmtMapper.selectAuthForRowCountByRelation */
+		select count(*)
+		from tb_sp_auth_mgmt am
+		inner join tb_sp_admin ad on am.admintype = ad.admintype
+		where am.admintype = cast(#{adminType} as integer)
+	</select>
+	
+	<!-- 다음 권한코드 조회 -->
+	<select id="selectAuthForNextAuthCd" resultType="int">
+		/* AuthMgmtMapper.selectAuthForNextAuthCd */
+		select case when max(admintype) is null then 1 else max(admintype) + 1 end from tb_sp_auth_mgmt
+	</select>
+	
+	<!-- 주어진 권한TPYE에 맞는 권한그룹 사용자리스트 조회 -->
+	<select id="selectAdminForListByAdminType" parameterType="java.lang.String" resultType="tbSpAdminVO">
+		/* AuthMgmtMapper.selectAdminForListByAdminType */
+		select adminid		/* 관리자ID */
+			 , adminname	/* 관리자명 */
+		from tb_sp_admin
+		where admintype = cast(#{adminType} as integer)	/* 관리자TYPE */
+	</select>
+	
+	<!-- 권한 정보 저장 -->
+	<insert id="insertAuth" parameterType="tbSpAuthMgmtVO" useGeneratedKeys="true" keyProperty="adminType">
+		/* AuthMgmtMapper.insertAuth */
+		insert into tb_sp_auth_mgmt (
+				<!-- admintype		/* 권한타입 */ -->
+				auth_nm			/* 권한명 */
+			,	adminid			/* 작성자ID */
+			,	regdatetime		/* 작성일시 */
+			,	sitemanager		/* 권한등급 */
+			,   oidkey				/* 업체키 */
+		) values (
+				<!-- #{adminType}	/* 권한타입 */ -->
+				#{authNm}		/* 권한명 */
+			,	#{adminId}		/* 작성자ID */
+			,	#{regDateTime}	/* 작성일시 */
+			,	#{adminLevel}	/* 권한등급 */
+			,   #{svcOrganizationKey}	/* 업체키 */
+		)
+	</insert>
+	
+	<!-- 권한별 메뉴 정보 저장 -->
+	<insert id="insertAuthMenu" parameterType="tbSpAuthMenuMgmtVO">
+		/* AuthMgmtMapper.insertAuthMenu */
+		insert into tb_sp_auth_menu_mgmt (
+				admintype		/* 권한타입 */
+			,	menu_cd			/* 메뉴코드 */
+			,	adminid			/* 작성자ID */
+			,	regdatetime		/* 작성일시 */
+		) values (
+				cast(#{adminType} as integer)	/* 권한타입 */
+			,	#{menuCd}		/* 메뉴코드 */
+			,	#{adminId}		/* 작성자ID */
+			,	#{regDateTime}	/* 작성일시 */
+		)
+	</insert>
+	
+	<!-- 권한로그 정보 저장 -->
+	<insert id="insertAuthLog" parameterType="tbSpAuthMgmtVO">
+		/* AuthMgmtMapper.insertAuthLog */
+		insert into tb_sp_auth_mgmt_log (
+				admintype			/* 권한타입 */
+			,	auth_nm				/* 권한명 */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일시 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+		) values (
+				cast(#{adminType} as integer)							/* 권한타입 */
+			,	#{authNm}												/* 권한명 */
+			,	#{adminId}												/* 행위자ID */
+			,	#{adminName}											/* 행위자명 */
+			,	#{setDateTime}											/* 행위일시 */
+			,	#{adminIp}												/* 행위자IP */
+			,	#{adminComName}											/* 행위자COMNAME */
+			,	#{actionType}											/* 행위타입 */
+			,	#{conduct, jdbcType=VARCHAR}							/* 행위 */
+			,	#{conductValue, jdbcType=VARCHAR}						/* 행위값 */
+		)
+	</insert>
+	
+	<!-- 권한별 메뉴로그 정보 저장 -->
+	<insert id="insertAuthMenuLog" parameterType="tbSpAuthMenuMgmtVO">
+		/* AuthMgmtMapper.insertAuthMenuLog */
+		insert into tb_sp_auth_menu_mgmt_log (
+				admintype			/* 권한타입 */
+			,	menu_cd				/* 메뉴코드 */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일시 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+		) values (
+				cast(#{adminType} as integer)								/* 권한타입 */
+			,	#{menuCd}													/* 메뉴코드 */
+			,	#{adminId}													/* 행위자ID */
+			,	#{adminName}												/* 행위자명 */
+			,	#{setDateTime}												/* 행위일시 */
+			,	#{adminIp}													/* 행위자IP */
+			,	#{adminComName}												/* 행위자COMNAME */
+			,	#{actionType}												/* 행위타입 */
+			,	#{conduct, jdbcType=VARCHAR}								/* 행위 */
+			,	#{conductValue, jdbcType=VARCHAR}							/* 행위값 */
+		)
+	</insert>
+	
+	<!-- 권한별 메뉴로그 정보 일괄 저장 -->
+	<insert id="insertAuthMenuLogByPk" parameterType="tbSpAuthMenuMgmtVO">
+		/* AuthMgmtMapper.insertAuthMenuLogByPk */
+		insert into tb_sp_auth_menu_mgmt_log (
+				admintype			/* 권한타입 */
+			,	menu_cd				/* 메뉴코드 */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일시 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+		)
+			select admintype													/* 권한타입 */
+				 , menu_cd														/* 메뉴코드 */
+				 , #{adminId}													/* 행위자ID */
+				 , #{adminName}													/* 행위자명 */
+				 , #{setDateTime}												/* 행위일시 */
+				 , #{adminIp}													/* 행위자IP */
+				 , #{adminComName}												/* 행위자COMNAME */
+				 , #{actionType}												/* 행위타입 */
+				 , #{conduct, jdbcType=VARCHAR}									/* 행위 */
+				 , #{conductValue, jdbcType=VARCHAR}							/* 행위값 */
+			from tb_sp_auth_menu_mgmt
+			where admintype = cast(#{adminType} as integer)	/* 권한타입 */
+	</insert>
+	
+	<!-- 관리자별 메뉴 정보 저장 -->
+	<insert id="insertAdminMenu" parameterType="tbSpAdminMenuMgmtVO">
+		/* AuthMgmtMapper.insertAdminMenu */
+		insert into tb_sp_admin_menu_mgmt (
+				adminid		/* 관리자ID */
+			,	menu_cd		/* 메뉴코드 */
+		) values (
+				#{adminId}	/* 관리자ID */
+			,	#{menuCd}	/* 메뉴코드 */
+		)
+	</insert>
+	
+	<!-- 관리자별 메뉴로그 정보 저장 -->
+	<insert id="insertAdminMenuLog" parameterType="tbSpAdminMenuMgmtVO">
+		/* AuthMgmtMapper.insertAdminMenuLogByPk */
+		insert into tb_sp_admin_menu_mgmt_log (
+				adminid				/* 관리자ID */
+			,	menu_cd				/* 메뉴코드 */
+			,	actionid			/* 행위자ID */
+			,	actiondatetime		/* 행위일자 */
+			,	actionip			/* 행위자IP */
+			,	actioncomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+		) values (
+				#{adminId}			/* 관리자ID */
+			,	#{menuCd}			/* 메뉴코드 */
+			,	#{actionId}			/* 행위자ID */
+			, 	#{setDateTime}		/* 행위일자 */
+			, 	#{actionIp}			/* 행위자IP */
+			, 	#{actionComName}	/* 행위자COMNAME */
+			, 	#{actionType}		/* 행위타입 */
+		)
+	</insert>
+	
+	<!-- 관리자별 메뉴로그 정보 일괄 저장 -->
+	<insert id="insertAdminMenuLogByPk" parameterType="tbSpAdminMenuMgmtVO">
+		/* AuthMgmtMapper.insertAdminMenuLogByPk */
+		insert into tb_sp_admin_menu_mgmt_log (
+				adminid				/* 관리자ID */
+			,	menu_cd				/* 메뉴코드 */
+			,	actionid			/* 행위자ID */
+			,	actiondatetime		/* 행위일자 */
+			,	actionip			/* 행위자IP */
+			,	actioncomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+		)
+			select adminid			/* 관리자ID */
+				 , menu_cd			/* 메뉴코드 */
+				 , #{actionId}		/* 행위자ID */
+				 , #{setDateTime}	/* 행위일자 */
+				 , #{actionIp}		/* 행위자IP */
+				 , #{actionComName}	/* 행위자COMNAME */
+				 , #{actionType}	/* 행위타입 */
+			from tb_sp_admin_menu_mgmt
+			where admintype = cast(#{adminType} as integer)	/* 권한타입 */
+	</insert>
+	
+	<!-- 권한 정보 수정 -->
+	<update id="updateAuth" parameterType="tbSpAuthMgmtVO">
+		/* AuthMgmtMapper.updateAuth */
+		update tb_sp_auth_mgmt set
+			<!-- auth_nm = #{authNm}				/* 권한명 */ -->
+			uptadminid = #{adminId}			/* 수정자ID */
+		,	uptdatetime = #{regDateTime}	/* 수정일시 */
+		,	sitemanager = #{adminLevel}		/* 수정일시 */
+		where admintype = cast(#{adminType} as integer)		/* 권한타입 */
+	</update>
+	
+	<!-- 권한 정보 삭제 -->
+	<delete id="deleteAuth" parameterType="java.lang.String">
+		/* AuthMgmtMapper.deleteAuth */
+		delete from tb_sp_auth_mgmt where admintype = cast(#{adminType} as integer)	/* 권한타입 */
+	</delete>
+	
+	<!-- 권한별 메뉴 정보 일괄 삭제 -->
+	<delete id="deleteAllAuthMenu" parameterType="tbSpAuthMenuMgmtVO">
+		/* AuthMgmtMapper.deleteAllAuthMenu */
+		delete from tb_sp_auth_menu_mgmt
+		where admintype = cast(#{adminType} as integer)	/* 권한타입 */
+	</delete>
+	
+	<!-- 권한별 메뉴 정보 삭제 -->
+	<delete id="deleteAuthMenu" parameterType="tbSpAuthMenuMgmtVO">
+		/* AuthMgmtMapper.deleteAuthMenu */
+		delete from tb_sp_auth_menu_mgmt
+		where admintype = cast(#{adminType} as integer)	/* 권한타입 */
+		<if test="menuCd != null and menuCd != ''"> and menu_cd = #{menuCd}	/* 메뉴코드 */ </if>
+	</delete>
+	
+	<!-- 주어진 관리자ID에 해당하는 관리자별 메뉴 정보 삭제 -->
+	<delete id="deleteAdminMenuByAdminId" parameterType="tbSpAdminMenuMgmtVO">
+		/* AuthMgmtMapper.deleteAdminMenuByAdminId */
+		delete from tb_sp_admin_menu_mgmt
+		where admintype = cast(#{adminType} as integer)	/* 권한타입 */
+	</delete>
+
+</mapper>

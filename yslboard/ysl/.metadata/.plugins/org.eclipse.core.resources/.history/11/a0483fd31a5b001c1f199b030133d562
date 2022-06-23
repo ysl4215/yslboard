@@ -1,0 +1,23 @@
+package com.swempire.web.error.controller;
+
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
+@ControllerAdvice
+public class CommonExceptionAdvice {
+	
+private static final Logger logger = LoggerFactory.getLogger(CommonExceptionAdvice.class);
+
+	
+
+	@ExceptionHandler(RuntimeException.class)
+	public String errorException(Model model, Exception e) {
+
+		logger.info("@ControllerAdvice ¹æ½Ä \n###exeption : " + e.getMessage());
+
+		model.addAttribute("exception", e);
+
+		return "error/exception";
+
+	}
+}

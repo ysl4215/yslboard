@@ -1,0 +1,4 @@
+#Tomcat publish data
+#Mon Dec 13 17:31:51 KST 2021
+org.eclipse.jst.jee.server\:/binary\:C\:\\Users\\\uC18C\uD504\uD2B8\uC81C\uAD6D\\.m2\\repository\\org\\springframework\\spring-web\\5.1.4.RELEASE\\spring-web-5.1.4.RELEASE.jar=C\:\\Program Files\\Apache Software Foundation\\Tomcat 8.5\\wtpwebapps\\ysl\\WEB-INF\\lib\\spring-web-5.1.4.RELEASE.jar
+org.eclipse.jst.jee.server\:ysl=C\:\\Program Files\\Apache Software Foundation\\Tomcat 8.5\\wtpwebapps\\ysl

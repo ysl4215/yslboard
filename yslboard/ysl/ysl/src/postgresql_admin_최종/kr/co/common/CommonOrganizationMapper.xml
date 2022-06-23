@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.common.dao.CommonOrganizationMapper">
+
+	<!-- 관리자관리 검색조건 -->
+	<sql id="selectOrganizationListWhere">
+		<where>
+			<!-- 리스트 설정 -->
+			<if test="siteManager >= 3 ">
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.OIDKEY = #{svcOrganizationKey}</if>
+			</if>
+			<if test="siteManager == 4 and adminId != null and adminId != ''  ">
+				and svcnum in (
+					select  t2.svcnum  
+					from tb_sp_service t1 inner join tb_sp_servicegrp t2 on t1.SVCNUM = t2.SVCNUM 
+					inner join tb_sp_admin t3 on t2.adminid = t3.adminid 
+					where t2.adminid = #{adminId} 
+				)
+			</if>
+			<!-- 무조건 실행 -->
+			<if test="siteManager != null and siteManager != ''"> and b.OIDKEY NOT IN ( select oidkey from tb_sp_admin where adminid = 'stonepass_admin' ) </if>
+		</where>
+	</sql>
+	<!--  서비스업체명  -->
+	<select id="selectOrganizationList" parameterType="CommonVO" resultType="hashmap">
+		/* CommonOrrganizationMapper.selectOganizationList */
+		select distinct   b.oidkey  						/* 서비스업체키  */
+						, b.OIDNAME "OIDNAME"		 		/* 서비스업체명  */
+						, b.auth_type authtype				/* 인증타입  */
+						, b.auth_method_cd                  /* 인증방법  */
+						
+						<if test="svcNum != null and svcNum != '' ">, a.svcnum /* 서비스번호 */ , a.svcname /* 서비스이름 */ </if>
+						<!-- <if test="adminId != null and adminId != '' ">, c.adminid /* 관리자아이디 */		, d.adminname /* 관리자이름 */ </if> -->
+						<!-- <if test="oidNum != null and oidNum != '' ">, b.oidnum /* 업체 고유 코드  */ </if> -->
+		from tb_sp_organization b
+		<if test="svcNum != null and svcNum != '' "> inner join tb_sp_service a	on a.oidkey = b.oidkey	</if>
+		<!-- <if test="adminId != null and adminId != '' ">	inner join tb_sp_servicegrp c on a.svcnum = c.svcnum inner join tb_sp_admin d on c.adminid = d.adminid	</if> -->
+		
+		<!-- where a.OIDKEY NOT IN ( select oidkey from tb_sp_admin where adminid = 'stonepass_admin' ) -->
+		<include refid="selectOrganizationListWhere" />
+		
+		<!-- select distinct OIDNAME	/* 서비스업체명  */
+						, oidkey /* 서비스업체키  */
+		 from tb_sp_organization a left outer join tb_sp_service b
+		 on a.svcnum = b.svcnum -->
+	</select>
+	
+	<!-- 서비스업체 인증 타입 검색조건 -->
+	<sql id="selectOrganizationKeyAuthWhere">
+		<where>
+			<!-- 무조건 실행 -->
+			<if test="siteManager != null and siteManager != ''"> and OIDKEY = #{svcOrganizationKey} </if>
+		</where>
+	</sql>
+	<!--  서비스업체 인증 타입  -->
+	<select id="selectOrganizationKeyAuth" parameterType="CommonVO" resultType="String">
+		select auth_type authType from tb_sp_organization
+		<include refid="selectOrganizationKeyAuthWhere" />
+	</select>
+
+</mapper>

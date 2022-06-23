@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.serviceOnOffMgmt.dao.ServiceOnOffMgmtMapper">
+	  
+	<!-- 서비스관리 검색조건 -->
+	<sql id="selectServiceOnOffListJoin">
+		  a	left outer join tb_sp_organization b on a.oidkey = b.oidkey
+		  left outer join tb_sp_servicegrp c on a.svcnum = c.svcnum
+		  left outer join tb_sp_admin d on c.oidkey = d.oidkey and c.adminid = d.adminid
+		  <!-- left outer join tb_sp_admin c	on a.oidkey = c.oidkey -->
+	</sql>
+
+	
+
+	<sql id="serviceOnOffListWhere">
+		<where>
+			<if test="svcOrganization != null and svcOrganization != ''">  and b.oidname = #{svcOrganization} </if>
+			<if test="condSearchNm != null and condSearchNm != ''">
+				<if test="condSearchType == 01 "> and a.svcnum like concat('%',#{condSearchNm},'%')</if>
+				<if test="condSearchType == 02 "> and svcname like concat('%',#{condSearchNm},'%')</if>
+				<if test="condSearchType == null or condSearchType =='' "> and svcname like concat('%',#{condSearchNm},'%')
+				or svckey like concat('%',#{condSearchNm},'%')</if>
+			 </if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and a.SVCDATE <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+				and a.SVCDATE <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			</if>
+			<if test="siteManager == 3 or siteManager == 4 ">
+				and a.oidkey = #{svcOrganizationKey}
+				<!--  and a.svcnum = #{svcNum} --> 
+			</if>
+			<!-- 무조건 실행 -->
+			<if test="siteManager != null and siteManager != ''"> and a.oidkey NOT IN ('000') </if>
+			<!-- 검색 조건 -->
+		</where>
+	</sql>
+ 
+
+
+	<!-- 서비스관리 로우 카운트 조회 -->
+	<select id="selectServiceOnOffForRowCount" parameterType="commonVO" resultType="int">
+		/* ServiceOnOffMgmtMapper.selectServiceOnOffForRowCount */
+		select count(*)
+		from (
+				select t.*
+				from (
+						select a.svcnum						/* 서비스 NUM */
+							 , svcname						/* 서비스명 */
+							 , svccode						/* 서비스코드 */
+							 , b.oidname svcOrganization		/* 서비스 업체명   */
+							 , svckey						/* 서비스식별번호 */
+							 , svcdate						/* 시간 */
+							 , svcstatus					/* 상태 */ 
+							 , svcappid						/* 서비스APPID */
+							 , a.uptdatetime					/* 수정일시 */
+							 , a.oidkey svcOrganizationKey
+							 ,svcifurl                         /*서비스 인터페이스 URL */
+							 , a.svc_div_cd						/* 서비스 구분 */
+							 , FN_COM_VAL_NM('003', a.svc_div_cd) as svc_div_nm			/* 서비스 구분명 */
+							 , a.auth_method_cd					/* 인증방식 */
+							 , FN_COM_VAL_NM('001', a.auth_method_cd) as auth_method_nm	/* 인증방식명 */
+							 , a.payperuse							/* 과금방식 */ 
+							 , FN_COM_VAL_NM('006', a.payperuse) as payperuseNm			/* 과금방식명 */
+							 , a.payper							/* 과금 */
+							 , a.auth_type							/* 인증종류  */
+							 , FN_COM_VAL_NM('002', a.auth_type) as auth_type_nm			/* 인증종류명 */
+							 , applogo							/* 앱 로고 이미지 */
+							 ,	a.CLIENTLICENSE		/* 고객사라이센스 */
+							,	a.CLIENTSERVER		/* 고객사서버 */
+							,	a.CLIENTDB			/* 고객사DB */
+							<!-- , c.adminname -->
+							, GROUP_CONCAT(DISTINCT c.adminid ORDER BY c.adminid separator  ', ') adminid	/* 서비스 명 리스트 컬럼  */
+							
+						from tb_sp_service
+						<include refid="selectServiceOnOffListJoin"/>
+						<include refid="serviceOnOffListWhere"/>
+						GROUP BY a.svcnum
+						
+				) t
+		) t	
+		
+	</select>
+	
+	<!-- 서비스관리 리스트 조회  -->
+	<select id="selectServiceOnOffForList" parameterType="commonVO" resultType="tbSpServiceVO">
+		/* ServiceOnOffMgmtMapper.selectServiceOnOffForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						select a.svcnum						/* 서비스 NUM */
+							 , svcname						/* 서비스명 */
+							 , svccode						/* 서비스코드 */
+							 , b.oidname svcOrganization		/* 서비스 업체명   */
+							 , svckey						/* 서비스식별번호 */
+							 , svcdate						/* 시간 */
+							 , svcstatus					/* 상태 */
+							 , svcappid						/* 서비스APPID */
+							 , a.uptdatetime					/* 수정일시 */
+							 , a.oidkey svcOrganizationKey
+							 ,svcifurl                         /*서비스 인터페이스 URL */
+							 , a.svc_div_cd						/* 서비스 구분 */
+							 , FN_COM_VAL_NM('003', a.svc_div_cd) as svc_div_nm			/* 서비스 구분명 */
+							 , a.auth_method_cd					/* 인증방식 */
+							 , FN_COM_VAL_NM('001', a.auth_method_cd) as auth_method_nm	/* 인증방식명 */
+							 , a.payperuse							/* 과금방식 */ 
+							 , FN_COM_VAL_NM('006', a.payperuse) as payperuseNm			/* 과금방식명 */
+							 , a.payper							/* 과금 */
+							 , a.auth_type							/* 인증종류  */
+							 , FN_COM_VAL_NM('002', a.auth_type) as auth_type_nm			/* 인증종류명 */
+							 , applogo							/* 앱 로고 이미지 */
+							 ,	a.CLIENTLICENSE		/* 고객사라이센스 */
+							,	a.CLIENTSERVER		/* 고객사서버 */
+							,	a.CLIENTDB			/* 고객사DB */
+							,   a.passstatus		/* ONOFF 상태 */
+							<!-- , c.adminname -->
+							, GROUP_CONCAT(DISTINCT c.adminid ORDER BY c.adminid separator  ', ') adminid	/* 서비스 명 리스트 컬럼  */
+							
+						from tb_sp_service
+						<include refid="selectServiceOnOffListJoin"/>
+						<include refid="serviceOnOffListWhere"/>
+						GROUP BY a.svcnum
+						
+				) t
+		) t		order by svcdate desc
+		limit #{pageSet} offset #{offSet}  
+	
+	</select>
+	
+	
+		<!-- 서비스관리 로우 카운트 조회 -->
+	<update id="updateServiceOnOffStatus" parameterType="commonVO">
+		update tb_sp_service set passstatus=#{passStatus}
+		where svcnum=#{svcNum}
+	</update>
+	
+</mapper>

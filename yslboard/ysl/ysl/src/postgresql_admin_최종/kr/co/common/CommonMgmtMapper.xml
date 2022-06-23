@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.common.dao.CommonMgmtMapper">
+
+	<!-- 권한리스트 조회(콤보박스용) -->
+	<!-- <sql id="selectAuthComboListJoin">
+		 left outer join tb_sp_admin b
+		on a.ADMINTYPE = b.ADMINTYPE
+	</sql> -->
+	<sql id="selectAuthComboListWhere">
+		<where>
+			<!-- <if test="siteManager == 3 or siteManager == 4 ">
+				and a.sitemanager > 2
+			</if> -->
+			<if test="siteManager >= 3 ">
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and a.OIDKEY = #{svcOrganizationKey} </if>
+			</if>
+		</where>
+	</sql>
+	<select id="selectAuthComboList" resultType="codeVO">
+		/* CommonMgmtMapper.selectAuthComboList */
+		select distinct  a.admintype as code	/* 권한코드 */
+			 , a.auth_nm as name		/* 권한명 */
+		from tb_sp_auth_mgmt a
+		<!-- <include refid="selectAuthComboListJoin" /> -->
+		<include refid="selectAuthComboListWhere" />
+		order by a.admintype
+	</select>
+	
+	<!-- 서비스리스트 조회(콤보박스용) -->
+	<select id="selectServiceComboList" resultType="codeVO">
+		/* CommonMgmtMapper.selectServiceComboList */
+		select t1.svcnum as code		/* 서비스NUM */
+			 , svcname as name		/* 서비스명 */
+			 , t2.oidname
+			 , t2.oidkey
+		from tb_sp_service t1 inner join tb_sp_organization t2
+		on t1.oidkey = t2.oidkey
+		<where>
+			<!-- <if test="adminType != null and adminType != ''"> and svcnum = #{svcNum} </if> -->
+			<if test="siteManager > 2 ">
+				<if test="siteManager != null and siteManager != ''"> and t1.oidkey = #{svcOrganizationKey}  </if>
+			</if>
+			<if test="siteManager != null and siteManager != ''">
+				and t1.oidkey not in ( '000' )
+			</if>
+		</where>
+		order by svcname asc
+	</select>
+	
+	<!-- 관리자행위 등록 -->
+	<insert id="insertAdminActionLog" parameterType="tbSpAdminActionLogVO">
+		/* CommonMgmtMapper.insertAdminActionLog */
+		insert into tb_sp_admin_actionlog (
+				adminip			/* 관리자IP */
+			,	actionurl		/* 행위URL */
+			,	adminid			/* 관리자ID */
+			,	admincomname	/* COMNAME */
+			,	setdatetime		/* 행위일자 */
+			,	actiontype		/* 관리자행위타입 */
+		) values (
+				#{adminIp}
+			,	#{actionUrl, jdbcType=VARCHAR}
+			,	#{adminId, jdbcType=VARCHAR}
+			,	#{adminComName}
+			,	now()
+			,	CAST(#{actionType} AS INTEGER)
+		)
+	</insert>
+	
+	<!-- 공통코드 조회 -->
+	<select id="selectComCd" parameterType="java.lang.String" resultType="tbSpComCdVO">
+		select com_cd_val as comCdVal		/* 공통코드값 */
+			 , com_cd_val_nm as comCdValNm	/* 공통코드갑설명 */
+		from tb_sp_com_cd
+		where com_cd_id = #{comCdId}	/* 공통코드ID */
+		order by com_cd_srt_sq asc		/* 공통코드정렬순번 */
+	</select>
+
+</mapper>

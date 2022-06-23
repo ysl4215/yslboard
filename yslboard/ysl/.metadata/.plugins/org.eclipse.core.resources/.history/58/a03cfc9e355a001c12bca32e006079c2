@@ -1,0 +1,5 @@
+package com.swempire.web.board.controller;
+
+public class BoardController {
+
+}

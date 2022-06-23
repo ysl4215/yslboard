@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.logHisMgmt.dao.DeviceListLogHisMapper">
+	
+	<sql id="deviceListLogListWhere">
+		<where>
+			<if test="condSearchNm != null and condSearchNm != ''">
+				<if test="condSearchType == '01'"> and adminid = #{condSearchNm}</if>
+				<if test="condSearchType == '02'"> and adminname like concat('%',#{condSearchNm},'%')</if>
+			</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and setdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') 
+				and setdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			</if>
+		</where>
+	</sql>
+	
+	<!-- 디바이스리스트 로그 로우카운트 조회 -->
+	<select id="selectDeviceListLogForRowCount" parameterType="commonVO" resultType="int">
+		/* DeviceListLogHisMapper.selectDeviceListLogForRowCount */
+		select count(*)
+		from tb_sp_devicelistlog
+		<include refid="deviceListLogListWhere"/>
+	</select>
+	
+	<!-- 디바이스리스트 로그 리스트 조회 -->
+	<select id="selectDeviceListLogForList" parameterType="commonVO" resultType="tbSpDeviceListVO">
+		/* DeviceListLogHisMapper.selectDeviceListLogForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						select devicename
+							 , devicedate
+							 , devicestatus
+							 , devicedesc
+							 , adminid
+							 , adminname
+							 , setdatetime
+							 , adminip
+							 , admincomname
+							 , actiontype
+							 , conduct
+							 , conductvalue
+						from tb_sp_devicelistlog
+						<include refid="deviceListLogListWhere"/>
+						order by setdatetime desc
+				) t
+		) t
+		limit #{pageSet} offset #{offSet}
+	</select>
+	
+	<!-- 디바이스리스트 전체 리스트 조회 -->
+	<select id="selectDeviceListLogForExcelList" parameterType="commonVO" resultType="tbSpDeviceListVO">
+		/* DeviceListLogHisMapper.selectDeviceListLogForExcelList */
+		select devicename
+			 , devicedate
+			 , devicestatus
+			 , devicedesc
+			 , adminid
+			 , adminname
+			 , setdatetime
+			 , adminip
+			 , admincomname
+			 , actiontype
+			 , conduct
+			 , conductvalue
+		from tb_sp_devicelistlog
+		<include refid="deviceListLogListWhere"/>
+		order by setdatetime desc
+	</select>
+
+</mapper>

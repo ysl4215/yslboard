@@ -1,0 +1,37 @@
+package com.swempire.web;
+
+import org.junit.runner.RunWith;
+import org.slf4j.LoggerFactory;
+
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(locations = { "classpath:spring/dataSource-context.xml" })
+public class MysqlConnectionTest {
+	
+	private static final Logger logger = LoggerFactory.getLogger(MysqlConnectionTest.class);
+	@Inject
+
+	private DataSource ds;
+
+	
+
+	@Test
+
+	public void testConnection() {
+
+		try (Connection con = ds.getConnection()){
+
+			logger.info("\n MySQL ø¨∞· : " + con);
+
+		} catch (Exception e) {
+
+			e.printStackTrace();
+
+		}
+
+	}
+
+}
+
+
+
+√‚√≥: https://freehoon.tistory.com/101 [»∆¿’ ∫Ì∑Œ±◊]

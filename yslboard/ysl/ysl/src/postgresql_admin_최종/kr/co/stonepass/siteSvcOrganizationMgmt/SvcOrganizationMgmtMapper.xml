@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.siteSvcOrganizationMgmt.dao.SvcOrganizationMgmtMapper">
+	
+	<!-- 서비스관리 검색조건 -->
+	<sql id="selectSvcOrganizationListJoin">
+		a left outer join tb_sp_service b 
+		 on a.oidkey = b.oidkey
+	</sql>
+	<sql id="selectSvcOrganizationListWhere">
+		<where>
+			<if test="svcOrganization != null and svcOrganization !='' "> and a.oidname = #{svcOrganization}</if>
+			<!-- <if test="condSearchType != null and  condSearchType != '' "> and a.svc_div_cd = #{condSearchType}</if> -->
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and oiddate <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+				and oiddate <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			</if>
+			<if test="condSearchNm != null and condSearchNm != ''">
+				<!-- and svcname like concat('%',#{condSearchNm},'%') -->
+				and b.svcname like concat('%',#{condSearchNm},'%')
+			</if>
+			<!-- 무조건 실행 -->
+			<if test="siteManager != null and siteManager != ''"> and a.oidkey NOT IN ('000') </if>
+		</where>
+	</sql>
+
+	<!-- 서비스관리 로우 카운트 조회 -->
+	<select id="selectSvcOrganizationListRowCount" parameterType="commonVO" resultType="int">
+		/* siteManager.selectSvcOrganizationListRowCount */ 
+		select count(*) from
+		(select distinct a.oidkey 
+		from tb_sp_organization
+		<include refid="selectSvcOrganizationListJoin"/>
+		<include refid="selectSvcOrganizationListWhere"/>
+		) x
+	</select>
+	
+	<!-- 서비스관리 리스트 조회  -->
+	<select id="selectSvcOrganizationLsitForList" parameterType="commonVO" resultType="TbSpOrganizationVO">
+		/* siteManager.selectSvcOrganizationLsitForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						select distinct
+							  a.oidkey as "svcOrganizationKey"		/* 기관식별번호 */
+							<!-- group by a.oidname svcOrganization			/* 서비스 업체명   */ -->
+							, a.oidname as  "svcOrganization"			/* 서비스 업체명   */
+							, a.clientlicense		/* 고객사 라이센스 */
+							, a.clientserver			/* 고객사 서버 */
+							, a.clientdb 					/* 고객사 db */
+							, oiddate				/* 등록일시 */
+						    , svcmanager						/* 담당자 */
+							, svcmanagerphone					/* 담장자 연락처 */
+							, sitelogo							/* 사이트 로고 url */
+							, color_pick						/* 색상지정 */
+							, cnfrm_site						/* 본인인증 서비스업체 */
+							, cnfrm_org_password         		/* 본인인증 비밀번호 */
+							, a.svc_div_cd						/* 서비스 구분 */
+							<!-- , FN_COM_VAL_NM('003', a.svc_div_cd)  /* 서비스 구분명 */ -->
+							<!-- , a.auth_method_cd					/* 인증방식 */ -->
+							<!-- , FN_COM_VAL_NM('001', a.auth_method_cd) as auth_method_nm	/* 인증방식명 */ -->
+							<!-- , payperuse							/* 과금방식 */ -->
+							<!-- , FN_COM_VAL_NM('006', payperuse) as payperuseNm			/* 과금방식명 */ -->
+							<!-- , payper							/* 과금 */ -->
+						  	, a.auth_type							/* 인증종류  */
+							<!-- , FN_COM_VAL_NM('002', a.auth_type) auth_type_nm			/* 인증종류명 */ -->
+							, beginDate							/* 게시일시 */
+							<!-- , applogo							/* 앱 로고 이미지 */ -->
+							<!-- , b.svcnum							/* 서비스 NUM */ -->
+							, a.oidnum							/* 업체 NUM */
+							<!-- , b.svcname							/* 서비스명 */ -->
+							, a.cnfrm_policy       /* 본인인증 방법 */ -->
+							, string_agg(DISTINCT svcname, ', ' ORDER BY svcname) as "svcName"	 /* 서비스 명 리스트 컬럼  */
+						from tb_sp_organization  
+						<include refid="selectSvcOrganizationListJoin"/>
+						<include refid="selectSvcOrganizationListWhere"/>
+						GROUP BY a.oidkey, a.clientlicense, a.clientserver, a.clientdb , oiddate
+						, svcmanager ,svcmanagerphone, sitelogo, color_pick	, cnfrm_site						/* 본인인증 서비스업체 */
+						, cnfrm_org_password, a.svc_div_cd, a.auth_type, beginDate, a.oidnum
+						, a.cnfrm_policy       			
+							
+						 <!-- group by a.oidname svcOrganization			/* 서비스 업체명   */ -->
+						
+				) t
+		) t	 order by oiddate desc 
+		limit #{pageSet} offset #{offSet}
+	</select>
+	
+	
+	
+	
+	<!-- 서비스관리 정보 저장 -->
+	<insert id="insertOrganizationData" parameterType="TbSpOrganizationVO">
+		/* svcOrganizationMgmtMapper.insertOrganizationData */
+		insert into tb_sp_organization (
+				OIDNAME				/* 기관명 */
+			,	OIDKEY				/* 기관식별번호 */
+			,	OIDDATE				/* 등록일시 */
+			,	SVC_DIV_CD			/* 서비스구분코드(1:ASP형,2:설치형) */
+			<!-- ,	AUTH_METHOD_CD		/* 인증방법코드(1:단일인증,2:멀티인증,3:단일+멀티인증) */ -->
+			,	AUTH_TYPE			/* 인증종류(방식)(1:PIN번호,2:패턴,3:지문,3:OTP) */
+			<!-- ,	SVCNUM				/* 서비스 NUM */ -->
+			,	CLIENTLICENSE		/* 고객사라이센스 */
+			,	CLIENTSERVER		/* 고객사서버 */
+			,	CLIENTDB			/* 고객사DB */
+			,	SVCMANAGER			/* 담당자 */
+			,	SVCMANAGERPHONE	 	/* 담당자연락처 */
+			,	SITELOGO	 		/* 사이트로고URL  */
+			,	COLOR_PICK	 		/* 색상지정  */
+			<!-- ,	PAYPERUSE	 		/* 과금방식 */ -->
+			<!-- ,	PAYPER				/* 과금 */ -->
+			,	BEGINDATE			/* 게시일시 */
+			,	CNFRM_SITE			/* 전화 인증 사이트 */
+			,	CNFRM_ORG_CODE		/* 인증 공통코드 */
+			,	CNFRM_ORG_PASSWORD	/* 인증 비밀번호 */
+			,	SP_URL				/* SP_URL */
+			,	API_URL				/* API_URL */
+			,   enc_yn				/* e2e 암호화 여부 */
+			,   enc_certificate		/* e2e 암호화 인증서 정보 */	
+		    ,   cnfrm_policy        /* 전화인증 방법 */
+		    ,   cnfrm_type        /* 본인인증 방법 */
+		    ,   URL        			/* 기관개발 본인인증 URL */
+			<!-- ,	APPLOGO				/* 앱로고이미지 */ -->
+		) values (
+				#{svcOrganization}				/* 기관명 */
+			,	#{svcOrganizationKey}			/* 기관식별번호 */
+			,	now()							/* 등록일시 */
+			,	#{svc_div_cd}					/* 서비스구분코드(1:ASP형,2:설치형) */
+			<!-- ,	#{auth_method_cd}				/* 인증방법코드(1:단일인증,2:멀티인증,3:단일+멀티인증) */ -->
+			,	#{auth_type}					/* 인증종류(방식)(1:PIN번호,2:패턴,3:지문,3:OTP) */
+			<!-- ,	#{svcNum}						/* 서비스 NUM */ -->
+			,	#{clientLicense}				/* 고객사라이센스 */
+			,	#{clientServer}					/* 고객사서버 */
+			,	#{clientDB}						/* 고객사DB */
+			,	#{svcManager}					/* 담당자 */
+			,	#{svcManagerPhone}	 			/* 담당자연락처 */
+			,	#{siteLogo}	 					/* 사이트로고URL  */
+			,	#{color_pick}	 				/* 색상지정  */
+			<!-- ,	#{payPerUse}	 				/* 과금방식  */ -->
+			<!-- ,	#{payPer}						/* 과금 */ -->
+			,	#{beginDate}					/* 게시일시 */
+			,	#{cnfrm_site}					/* 전화 인증 사이트 */
+			,	#{cnfrm_org_code}					/* 인증 공통코드 */
+			,	#{cnfrm_org_password}					/* 인증 비밀번호 */
+			,	#{sp_url}				/* SP_URL */
+			,	#{api_url}				/* API_URL */
+			,   #{enc_yn}				/* e2e 암호화 여부 */
+			,   #{enc_certificate}		/* e2e 암호화 인증서 정보 */	
+			,   #{cnfrm_policy}        /* 전화인증 방법 */
+			,   #{cnfrm_type}        /* 본인인증 방법 */
+			,   #{cnfrm_org_cnfrm_url}      	/* 기관개발 본인인증 URL */
+			<!-- ,	#{appLogo}						/* 앱로고이미지 */ -->
+		)
+	</insert>
+	
+	<!-- 서비스 업체 중복체크 -->
+	<select id="selectOrganizationByPkForRowCount" parameterType="TbSpOrganizationVO" resultType="int">
+		/* svcOrganizationMgmtMapper.selectOrganizationByPkForRowCount */
+		select count(*)		/* 서비스 NUM */
+		from tb_sp_organization
+		where oidKey = #{svcOrganizationKey}	/* 기관식별번호 */
+	</select>
+	
+	<!-- 주어진 PK에 맞는 서비스식별번호 정보 로우카운트 조회 -->
+	<select id="selectOrganizationByPkForRow" parameterType="TbSpOrganizationVO" resultType="TbSpOrganizationVO">
+		/* svcOrganizationMgmtMapper.selectOrganizationByPkForRow */
+		select  distinct
+				a.OIDNUM					/* 기관번호 */
+			,	a.OIDNAME svcOrganization	/* 기관명 */
+			,	a.OIDKEY svcOrganizationKey	/* 기관식별번호 */
+			,	OIDDATE						/* 등록일시 */
+			,	OIDSTATUS					/* 상태 */
+			,	a.SVC_DIV_CD 					/* 서비스구분코드(1:ASP형,2:설치형) */
+			<!-- ,	a.AUTH_METHOD_CD				/* 인증방법코드(1:단일인증,2:멀티인증,3:단일+멀티인증) */ -->
+			,	a.AUTH_TYPE					/* 인증종류(방식)(1:PIN번호,2:패턴,3:지문,3:OTP) */
+			<!-- ,	b.SVCNUM					/* 서비스 NUM */ -->
+			<!-- ,	b.SVCNAME						/* 서비스 NAME */ -->
+			,	a.CLIENTLICENSE				/* 고객사라이센스 */
+			,	a.CLIENTSERVER				/* 고객사서버 */
+			,	a.CLIENTDB					/* 고객사DB */
+			,	a.CNFRM_SITE					/*전화 인증 사이트*/
+			,	a.CNFRM_ORG_CODE					/* 인증 공통코드 */
+			,	a.CNFRM_ORG_PASSWORD					/* 인증 공통코드 */
+			,	a.SP_URL					/* SP_URL */
+			,	a.API_URL					/* API_URL */
+			,   a.enc_yn					/* e2e 암호화 여부 */
+			,   a.enc_certificate			/* e2e 암호화 인증서 정보 */	
+		
+			,	SVCMANAGER					/* 담당자 */
+			,	SVCMANAGERPHONE	 			/* 담당자연락처 */
+			,	SITELOGO	 				/* 사이트로고URL  */
+			,	COLOR_PICK	 				/* 색상지정  */
+			<!-- ,	PAYPERUSE	 				/* 과금방식 */ -->
+			<!-- ,	PAYPER						/* 과금 */ -->
+			,	BEGINDATE					/* 게시일시 */
+			, cnfrm_policy                  /*전화인증 방법*/
+		    , cnfrm_type                  /*본인인증 방법*/
+		    , URL as cnfrm_org_cnfrm_url   /*본인인증 개발 URL*/
+			<!-- ,	APPLOGO					/* 앱로고이미지 */ -->
+		from tb_sp_organization a left outer join tb_sp_service b
+		on a.oidkey = b.oidkey
+		where a.oidnum = cast(#{oidNum} as integer)	/* 업체 NUM */
+	</select>
+	
+	<!-- 서비스관리 시퀀스 조회 -->
+	<!-- <select id="selectServiceNextSvcNum" resultType="int">
+		/* ServiceMgmtMapper.selectServiceNextSvcNum */
+		select ifnull(max(svcnum), 0)+1 from tb_sp_service
+	</select> -->
+	
+	<!-- 서비스관리 로그 정보 저장 -->
+	<insert id="insertOrganizationDataLog" parameterType="TbSpOrganizationVO">
+		/* svcOrganizationMgmtMapper.insertOrganizationDataLog */
+		<!-- insert into tb_sp_service_log (
+				svcnum				/* 서비스 NUM */
+			,	svcname				/* 서비스명 */
+			,	svckey				/* 서비스식별번호 */
+			,	svcdate				/* 시간 */
+			,	svcstatus			/* 상태 */
+			,	svcappid			/* 서비스APPID */
+			,	svcfacetsurl		/* 서비스FACETSURL */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일시 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+		) values (
+				#{svcNum}											/* 서비스 NUM */
+			,	#{svcName}											/* 서비스명 */
+			,	#{svcKey}											/* 서비스식별번호 */
+			,	#{svcDate}											/* 시간 */
+			,	(
+					select case when (
+						select count(*) from tb_sp_organization a, tb_sp_service b
+						where a.SVCNUM = b.svcnum
+						and a.CLIENTLICENSE != null 
+						and a.SVCNUM = #{svcNum}
+					) = 0 then 0 else #{svcStatus} end as svcStatus	/* 상태 */
+				)
+			,	#{svcAppid}											/* 서비스APPID */
+			,	#{svcFacetsUrl}										/* 서비스FACETSURL */
+			,	#{adminId}											/* 행위자ID */
+			,	#{adminName}										/* 행위자명 */
+			,	#{setDateTime}										/* 행위일시 */
+			,	#{adminIp}											/* 행위자IP */
+			,	#{adminComName}										/* 행위자COMNAME */
+			,	#{actionType}										/* 행위타입 */
+			,	#{conduct, jdbcType=VARCHAR}						/* 행위 */
+			,	#{conductValue, jdbcType=VARCHAR}					/* 행위값 */
+		) -->
+	</insert>
+	
+	<!-- 서비스관리 정보 조회해서 로그 정보 저장 insert ~ select -->
+	<!-- <insert id="insertServiceLogByPk" parameterType="tbSpServiceVO">
+		/* ServiceMgmtMapper.insertServiceLogByPk */
+		insert into tb_sp_service_log (
+				svcnum				/* 서비스 NUM */
+			,	svcname				/* 서비스명 */
+			,	svckey				/* 서비스식별번호 */
+			,	svcdate				/* 시간 */
+			,	svcstatus			/* 상태 */
+			,	svcappid			/* 서비스APPID */
+			,	svcfacetsurl		/* 서비스FACETSURL */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일시 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+		)
+			select svcnum												/* 서비스 NUM */
+				 , #{svcName}											/* 서비스명 */
+				 , svcKey												/* 서비스식별번호 */
+				 , #{svcDate}											/* 시간 */
+				 , #{svcStatus}											/* 상태 */
+				 , #{svcAppid}											/* 서비스APPID */
+				 , #{svcFacetsUrl}										/* 서비스FACETSURL */
+				 , #{adminId}											/* 행위자ID */
+				 , #{adminName}											/* 행위자명 */
+				 , #{setDateTime}										/* 행위일시 */
+				 , #{adminIp}											/* 행위자IP */
+				 , #{adminComName}										/* 행위자COMNAME */
+				 , #{actionType}										/* 행위타입 */
+				 , #{conduct, jdbcType=VARCHAR}							/* 행위 */
+				 , #{conductValue, jdbcType=VARCHAR}					/* 행위값 */
+			from tb_sp_service
+			where svcnum = #{svcNum}	/* 서비스 NUM */
+	</insert> -->
+	
+	<!-- 서비스업체 정보 수정 -->
+	<update id="updateOrganization" parameterType="TbSpOrganizationVO">
+		/* svcOrganizationMgmtMapper.updateOrganization */
+		update tb_sp_organization set
+				OIDNAME = #{svcOrganization}				/* 기관명 */
+			,	SVC_DIV_CD = #{svc_div_cd}					/* 서비스구분코드(1:ASP형,2:설치형) */
+			<!-- ,	AUTH_METHOD_CD = #{auth_method_cd}			/* 인증방법코드(1:단일인증,2:멀티인증,3:단일+멀티인증) */ -->
+			,	AUTH_TYPE = #{auth_type}					/* 인증종류(방식)(1:PIN번호,2:패턴,3:지문,3:OTP) */
+			<!-- ,	SVCNUM = #{svcNum}							/* 서비스 NUM */ -->
+			,	CLIENTLICENSE = #{clientLicense}			/* 고객사라이센스 */
+			,	CLIENTSERVER = #{clientServer}				/* 고객사서버 */
+			,	CLIENTDB = #{clientDB}						/* 고객사DB */
+			,	SVCMANAGER = #{svcManager}					/* 담당자 */
+			,	SVCMANAGERPHONE = #{svcManagerPhone}	 	/* 담당자연락처 */
+			<if test="siteLogo != null and siteLogo != ''">,	SITELOGO = #{siteLogo}	/* 사이트로고URL  */</if>
+			<if test="color_pick != null and color_pick != ''">,	COLOR_PICK = #{color_pick}	/* 색상지정  */</if>
+			<!-- ,	PAYPERUSE = #{payPerUse}	 				/* 과금방식 */ -->
+			<!-- ,	PAYPER = #{payPer}							/* 과금 */ -->
+			,	BEGINDATE = #{beginDate}					/* 게시일시 */
+			,	OIDUPDATETIME = now()						/* 수정일시 */
+			,	CNFRM_SITE = #{cnfrm_site}					/*	전화 인증 사이트 */
+			,	CNFRM_ORG_CODE = #{cnfrm_org_code}						/* 인증 공통코드 */
+			,	CNFRM_ORG_PASSWORD = #{cnfrm_org_password}						/* 인증 비밀번호 */
+			,	SP_URL=	#{sp_url}						/* SP_URL */
+			,	API_URL=	#{api_url}						/* API_URL */
+			,   enc_yn=#{enc_yn}						/* e2e 암호화 여부 */
+			,   enc_certificate=#{enc_certificate}		/* e2e 암호화 인증서 정보 */	
+			,  cnfrm_policy=#{cnfrm_policy}            /* 전화인증 방법*/
+			,  cnfrm_type=#{cnfrm_type}            /* 본인인증 방법*/
+			,  url=#{cnfrm_org_cnfrm_url}            /* 기관개발 본인인증 URL */
+			<!-- <if test="appLogo != null and appLogo != ''">,	APPLOGO = #{appLogo}	/* 앱로고이미지  */</if> -->
+		where oidnum = cast(#{oidNum} as integer)							/* 기관NUM */
+			
+	</update>
+	
+	<!-- 서비스업체 정보 수정 (비밀번호는 수정X)-->
+	<update id="updateOrganization2" parameterType="TbSpOrganizationVO">
+		/* svcOrganizationMgmtMapper.updateOrganization2 */
+		update tb_sp_organization set
+				OIDNAME = #{svcOrganization}				/* 기관명 */
+			,	SVC_DIV_CD = #{svc_div_cd}					/* 서비스구분코드(1:ASP형,2:설치형) */
+			<!-- ,	AUTH_METHOD_CD = #{auth_method_cd}			/* 인증방법코드(1:단일인증,2:멀티인증,3:단일+멀티인증) */ -->
+			,	AUTH_TYPE = #{auth_type}					/* 인증종류(방식)(1:PIN번호,2:패턴,3:지문,3:OTP) */
+			<!-- ,	SVCNUM = #{svcNum}							/* 서비스 NUM */ -->
+			,	CLIENTLICENSE = #{clientLicense}			/* 고객사라이센스 */
+			,	CLIENTSERVER = #{clientServer}				/* 고객사서버 */
+			,	CLIENTDB = #{clientDB}						/* 고객사DB */
+			,	SVCMANAGER = #{svcManager}					/* 담당자 */
+			,	SVCMANAGERPHONE = #{svcManagerPhone}	 	/* 담당자연락처 */
+			<if test="siteLogo != null and siteLogo != ''">,	SITELOGO = #{siteLogo}	/* 사이트로고URL  */</if>
+			<if test="color_pick != null and color_pick != ''">,	COLOR_PICK = #{color_pick}	/* 색상지정  */</if>
+			<!-- ,	PAYPERUSE = #{payPerUse}	 				/* 과금방식 */ -->
+			<!-- ,	PAYPER = #{payPer}							/* 과금 */ -->
+			,	BEGINDATE = #{beginDate}					/* 게시일시 */
+			,	OIDUPDATETIME = now()						/* 수정일시 */
+			,	CNFRM_SITE = #{cnfrm_site}					/*	전화 인증 사이트 */
+			,	CNFRM_ORG_CODE = #{cnfrm_org_code}						/* 인증 공통코드 */
+			,	SP_URL=	#{sp_url}						/* SP_URL */
+			,   enc_yn=#{enc_yn}						/* e2e 암호화 여부 */
+			,   enc_certificate=#{enc_certificate}		/* e2e 암호화 인증서 정보 */	
+			,  cnfrm_policy=#{cnfrm_policy}            /* 전화인증 방법*/
+			,  cnfrm_type=#{cnfrm_type}            /* 본인인증 방법*/
+			,  url=#{cnfrm_org_cnfrm_url }    		 	 	      /* 본인인증 개발URL*/
+			<!-- <if test="appLogo != null and appLogo != ''">,	APPLOGO = #{appLogo}	/* 앱로고이미지  */</if> -->
+		where oidnum = #{oidNum}							/* 기관NUM */
+			
+	</update>
+	
+	<!-- 주어진 관리자ID에 해당하는 관리자별 메뉴 정보 삭제 -->
+	<delete id="deleteOrganizationData" parameterType="TbSpOrganizationVO">
+		/* svcOrganizationMgmtMapper.deleteOrganizationData */
+		delete from tb_sp_organization
+		where oidnum = cast(#{oidNum} as integer)
+	</delete>
+	
+
+	<!--   키 정보 저장-->
+	<insert id="insertCertificateKey" parameterType="TbSpKeyListVO">
+		/* svcOrganizationMgmtMapper.insertCertificateKey */
+		INSERT INTO tb_sp_certificate_keylist(
+	      PUBLICKEY
+		, PRIVATEKEY
+		, REGDATE
+		, OIDKEY
+		)
+		 VALUES(
+		
+	   	  #{publickey}
+		, #{privatekey}
+		, now()
+		, #{oidkey}
+		 )
+	</insert>
+
+	<!--  키 정보 수정-->
+	<update id ="updateCertificateKey" parameterType ="TbSpKeyListVO">
+	/* svcOrganizationMgmtMapper.updateCertificateKey */
+		update tb_sp_certificate_keylist set
+			PUBLICKEY = #{publickey}				/* 기관명 */
+		,	PRIVATEKEY = #{privatekey}				/* 기관명 */
+		,	REGDATE = now()							/* 기관명 */
+										/* 기관명 */
+		where OIDKEY = #{oidkey}	
+	</update>
+
+
+	<select id="selectOrganizationkey" parameterType="String" resultType="TbSpKeyListVO">
+		SELECT * FROM tb_sp_certificate_keylist
+	</select>
+
+	<!--  키 존재여부 확인-->
+	<select id="checkCertificateKey" parameterType="String" resultType="int" >
+	/* svcOrganizationMgmtMapper.checkCertificateKey */
+		SELECT count(OIDKEY) FROM tb_sp_certificate_keylist
+			where OIDKEY= #{oidkey}
+	</select>
+
+	<delete id="deleteCertificateKey" parameterType="String">
+	/* svcOrganizationMgmtMapper.deleteCertificateKey */
+		DELETE FROM tb_sp_certificate_keylist 
+			where OIDKEY= #{oidkey}
+	</delete>
+
+
+</mapper>

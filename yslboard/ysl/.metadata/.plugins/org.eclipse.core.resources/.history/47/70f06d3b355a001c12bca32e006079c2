@@ -1,0 +1,6 @@
+package com.swempire.web.board.service;
+
+public interface BoardService {
+	public List<BoardVO> getBoardList() throws Exception;
+
+}

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.customerInfo.dao.CustomerInfoMapper">
+
+	<resultMap id="TbSpCustomerResultMap" type="tbSpCustomerVO">
+		<id column="customer_num" property="customerNum" javaType="String"/>
+		<result column="customer_name" property="customerName" javaType="String"/>
+		<result column="customer_licence" property="customerLicence" javaType="String"/>
+		<result column="customer_server" property="customerServer" javaType="String"/>
+		<result column="customer_database" property="customerDatabase" javaType="String"/>
+		<result column="customer_begin_date" property="customerBeginDate" javaType="String"/>
+		<result column="customer_person_name" property="customerPersonName" javaType="String"/>
+		<result column="customer_person_contact" property="customerPersonContact" javaType="String"/>
+		<result column="ori_site_logo_filename" property="oriSiteLogoFilename" javaType="String"/>
+		<result column="site_logo_filename" property="siteLogoFilename" javaType="String"/>
+		<result column="site_logo_filepath" property="siteLogoFilepath" javaType="String"/>
+	</resultMap>
+	
+	<select id="selectCustomerForRowCount" parameterType="tbSpCustomerVO" resultType="int">
+		select count(*)
+		from tb_sp_customer
+		where 1 = 1
+	</select>
+	
+	<select id="selectCustomerByPk" parameterType="tbSpCustomerVO" resultMap="TbSpCustomerResultMap">
+		select customer_num
+			 , customer_name
+			 , customer_licence
+			 , customer_server
+			 , customer_database
+			 , customer_begin_date
+			 , customer_person_name
+			 , customer_person_contact
+			 , ori_site_logo_filename
+			 , site_logo_filename
+			 , site_logo_filepath
+		from tb_sp_customer
+		where 1 = 1
+	</select>
+	
+	<insert id="insertCustomer" parameterType="tbSpCustomerVO">
+		insert into tb_sp_customer (
+				customer_num
+			,	customer_name
+			,	customer_licence
+			,	customer_server
+			,	customer_database
+			,	customer_begin_date
+			,	customer_person_name
+			,	customer_person_contact
+			,   ori_site_logo_filename
+			,   site_logo_filename
+			,   site_logo_filepath
+		) values (
+				#{customerNum}
+			,	#{customerName, jdbcType=VARCHAR}
+			,	#{customerLicence, jdbcType=VARCHAR}
+			,	#{customerServer, jdbcType=VARCHAR}
+			,	#{customerDatabase, jdbcType=VARCHAR}
+			,	#{customerBeginDate, jdbcType=VARCHAR}
+			,	#{customerPersonName, jdbcType=VARCHAR}
+			,	#{customerPersonContact, jdbcType=VARCHAR}
+			,	#{oriSiteLogoFilename, jdbcType=VARCHAR}
+			,	#{siteLogoFilename, jdbcType=VARCHAR}
+			,	#{siteLogoFilepath, jdbcType=VARCHAR}
+		)
+	</insert>
+	
+	<update id="updateCustomer" parameterType="tbSpCustomerVO">
+		update tb_sp_customer set
+				customer_name = #{customerName, jdbcType=VARCHAR}
+			,	customer_licence = #{customerLicence, jdbcType=VARCHAR}
+			,	customer_server = #{customerServer, jdbcType=VARCHAR}
+			,	customer_database = #{customerDatabase, jdbcType=VARCHAR}
+			,	customer_begin_date = #{customerBeginDate, jdbcType=VARCHAR}
+			,	customer_person_name = #{customerPersonName, jdbcType=VARCHAR}
+			,	customer_person_contact = #{customerPersonContact, jdbcType=VARCHAR}
+			<if test="oriSiteLogoFilename != null and oriSiteLogoFilename != ''">, ori_site_logo_filename = #{oriSiteLogoFilename}</if>
+			<if test="siteLogoFilename != null and siteLogoFilename != ''">, site_logo_filename = #{siteLogoFilename}</if>
+			<if test="siteLogoFilepath != null and siteLogoFilepath != ''">, site_logo_filepath = #{siteLogoFilepath}</if>
+		where customer_num = #{customerNum}
+	</update>
+
+</mapper>

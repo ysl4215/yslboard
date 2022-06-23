@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.logHisMgmt.dao.FidoMetaDataLogHisMapper">
+
+	<!-- FIDO메타데이터 로그 검색조건 -->
+	<sql id="metaDataLogListWhere">
+		<where>
+			<if test="condSearchNm != null and condSearchNm != ''">
+				<if test="condSearchType == '01'"> and adminid = #{condSearchNm}</if>
+				<if test="condSearchType == '02'"> and adminname like concat('%',#{condSearchNm},'%')</if>
+			</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and setdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') 
+				and setdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS') 
+			</if>
+		</where>
+	</sql>
+	
+	<!-- FIDO메타데이터 로그 로우 카운트 조회 -->
+	<select id="selectMetaDataLogForRowCount" resultType="int">
+		/* FidoMetaDataLogHisMapper.selectFidoMetaDataLogForRowCount */
+		select count(*)
+		from tb_sp_metadata_log
+		<include refid="metaDataLogListWhere"/>
+	</select>
+	
+	<!-- FIDO메타데이터 로그 리스트 조회 -->
+	<select id="selectMetaDataLogForList" parameterType="commonVO" resultType="tbSpMetaDataVO">
+		/* FidoMetaDataLogHisMapper.selectMetaDataForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						select num								/* INDEX */
+							 , aaid								/* AAID */
+							 , description						/* 설명 */
+							 , autheticatorversion				/* 버전 */
+							 , upv								/* 버전 */
+							 , assertionscheme					/* 스키마 */
+							 , autheticationalg					/* 알고리즘 */
+							 , publickeyalgenc					/* 알고리즘 */
+							 , attestationtypes					/* ATTESTATION Type */
+							 , userverificationdetails			/* 인증 Type */
+							 , keyprotection					/* Key 보호 수준 */
+							 , matcherprotection				/* Matcher 보호 수준 */
+							 , attestationrootcertificates		/* 인증서 */
+							 , adminid
+							 , adminname
+							 , setdatetime
+							 , adminip
+							 , admincomname
+							 , actiontype
+							 , conduct
+							 , conductvalue
+						from tb_sp_metadata_log
+						<include refid="metaDataLogListWhere"/>
+						order by setdatetime desc
+				) t
+		) t
+		limit #{pageSet} offset #{offSet}
+	</select>
+	
+	<!-- FIDO메타데이터 로그 전체 리스트 조회 -->
+	<select id="selectMetaDataLogForExcelList" parameterType="commonVO" resultType="tbSpMetaDataVO">
+		/* FidoMetaDataLogHisMapper.selectMetaDataLogForExcelList */
+		select num								/* INDEX */
+			 , aaid								/* AAID */
+			 , description						/* 설명 */
+			 , autheticatorversion				/* 버전 */
+			 , upv								/* 버전 */
+			 , assertionscheme					/* 스키마 */
+			 , autheticationalg					/* 알고리즘 */
+			 , publickeyalgenc					/* 알고리즘 */
+			 , attestationtypes					/* ATTESTATION Type */
+			 , userverificationdetails			/* 인증 Type */
+			 , keyprotection					/* Key 보호 수준 */
+			 , matcherprotection				/* Matcher 보호 수준 */
+			 , attestationrootcertificates		/* 인증서 */
+			 , adminid
+			 , adminname
+			 , setdatetime
+			 , adminip
+			 , admincomname
+			 , actiontype
+			 , conduct
+			 , conductvalue
+		from tb_sp_metadata_log
+		<include refid="metaDataLogListWhere"/>
+		order by setdatetime desc
+	</select>
+
+</mapper>

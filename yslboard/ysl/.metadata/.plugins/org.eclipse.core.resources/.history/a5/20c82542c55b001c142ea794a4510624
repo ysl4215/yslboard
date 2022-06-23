@@ -1,0 +1,40 @@
+package com.swempire.web.board.model;
+
+public class Search {
+	
+	private String searchType;
+
+	private String keyword;	
+	private int page;
+
+	private int range;
+
+	private int listCnt;
+
+	
+	public String getSearchType() {
+		return searchType;
+	}
+
+	public void setSearchType(String searchType) {
+		this.searchType = searchType;
+	}
+
+	public String getKeyword() {
+		return keyword;
+	}
+
+	public void setKeyword(String keyword) {
+		this.keyword = keyword;
+	}
+	
+
+	public void pageInfo(int page, int range, int listCnt) {
+
+		this.page = page;
+
+		this.range = range;
+
+		this.listCnt = listCnt;
+
+}

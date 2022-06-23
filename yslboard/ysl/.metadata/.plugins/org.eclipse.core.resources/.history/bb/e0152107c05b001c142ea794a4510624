@@ -1,0 +1,5 @@
+package com.swempire.web.board.model;
+
+public class Search {
+
+}

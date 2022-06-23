@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.userMgmt.dao.MotpUserMgmtMapper">
+
+	<sql id="motpMemberJoin">
+			a left outer join tb_sp_service c on a.sid = c.svcnum 
+		left outer join tb_sp_organization b on (c.oidkey = b.oidkey) 
+	</sql>
+	
+	<!-- MOTP 사용자 리스트 검색조건 -->
+	<sql id="motpMemberListWhere">
+		<where>
+			<!-- 관리자 구분 -->
+			<if test="siteManager == 3 ">
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey} </if>
+			</if>
+			<if test="siteManager ==  4 "><!-- 업체 구분 -->
+				and sid in (
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				) 
+			</if>
+			<!-- 무조건 실행 -->
+			<if test="siteManager != null and siteManager != ''"></if>
+			
+			<!-- 검색 조건 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and b.OIDNAME = #{svcOrganization}</if> <!-- 셀렉트 선택 -->
+			<if test="status != null and status != ''"> and fstatus = #{status}</if>
+			<!-- <if test="adminType != null and adminType != ''"> and sid = #{svcNum}</if> -->
+			<if test="condSearchNm != null and condSearchNm != ''">and userid like concat('%',#{condSearchNm},'%') </if>
+		</where>
+	</sql>
+	
+	<!-- MOTP 사용자 정보 로우 카운트 조회 -->
+	<select id="selectMotpMemberForRowCount" parameterType="tbSpMotpMembersVO" resultType="int">
+		select count(*)
+		from TB_SP_MOTPMEMBERS
+		<include refid="motpMemberJoin"/>
+		
+		<!-- <include refid="motpMemberListWhere"/> -->
+	</select>
+	
+	<!-- MOTP 사용자 정보 리스트 조회 -->
+	<select id="selectMotpMemberForList" parameterType="tbSpMotpMembersVO" resultType="tbSpMotpMembersVO">
+		select t.*
+		from (
+				select t.*
+				from (
+						 select a.userid    /* 사용자ID */  , 
+								a.sid     /* 시스템ID */    ,
+                                a.status    /* 사용자상태 */ ,
+                                a.serialnum    /* MOTP S/N */ , 
+                                a.usernum    /* USER INDEX */ , 
+                                a.otptype    /* OTPTYPE(1:OTP,2:SMS,3:EMAIL) */ , 
+                                a.modificationtime  /* 보정시간(-1,0,1) */,
+                                 a.lastotptime     /* 성공 otp 시간*/, 
+                                a.lastotp     /* 성공 otp/ ,
+                                c.svcname /* 서비스명 */ 
+						from TB_SP_MOTPMEMBERS 
+						<include refid="motpMemberJoin"/>
+						<!-- <include refid="motpMemberListWhere"/> -->
+						
+				) t
+		) t order by usernum desc limit #{pageSet} offset #{offSet} ;
+	</select>
+	
+	<!-- MOTP 사용자 정보 로우카운트 조회 -->
+	<select id="selectMemberByPkForRowCount" parameterType="tbSpMotpMembersVO" resultType="int">
+		select count(*)
+		from TB_SP_MOTPMEMBERS T1
+		<include refid="motpMemberJoin"/>
+		<include refid="motpMemberListWhere"/>
+		where T1.usernum = #{userNum}	/* USER INDEX */
+	</select>
+	
+	<!-- MOTP S/N 초기화 -->
+	<update id="updateMotpMembresSnReset" parameterType="tbSpMotpMembersVO">
+		update TB_SP_MOTPMEMBERS set
+				serialnum = ''	/* MOTP S/N */
+		where usernum = #{userNum}	/* USER INDEX */
+	</update>
+
+</mapper>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.userMgmt.dao.FidoUserMgmtMapper">
+	
+	<!-- FIDO사용자 리스트 검색조건 -->
+	<sql id="fidoMemberListJoin">
+		a left outer join tb_sp_organization b 
+		on a.sid = b.svcnum
+	</sql>
+	<sql id="fidoMemberListWhere">
+		<where>
+			<!-- 관리자 구분 -->
+			<if test="siteManager >= 3 ">
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey} </if>
+			</if>
+			<!-- 무조건 실행 -->
+			<if test="siteManager != null and siteManager != ''"> and a.biotype = 'FINGERPRINT' </if>
+			<!-- 검색 조건 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and b.OIDNAME = #{svcOrganization}</if> <!-- 셀렉트 선택 -->
+			<if test="fStatus != null and fStatus != ''"> and fStatus = #{fStatus}</if>
+			<!-- <if test="adminType != null and adminType != ''"> and sid = #{svcNum}</if> -->
+			<if test="condSearchNm != null and condSearchNm != ''"> and userid = #{condSearchNm}</if>
+		</where>
+	</sql>
+	
+	<!-- FIDO사용자관리 로우 카운트 조회 -->
+	<select id="selectFidoMemberForRowCount" parameterType="tbSpMembersVO" resultType="int">
+		select count(*)
+		from tb_sp_fidomembers
+		<include refid="fidoMemberListJoin"/>
+		<include refid="fidoMemberListWhere"/>
+	</select>
+	
+	<!-- FIDO사용자관리 리스트 조회 -->
+	<select id="selectFidoMemberForList" parameterType="tbSpFidoMembersVO" resultType="tbSpFidoMembersVO">
+		select t.*
+		from (
+				select t.*
+				from (
+						select userid					/* 사용자ID */
+							 , aaid						/* AAID */
+							 , keyid					/* KEYID */
+							 , publickey				/* FIDO공개키 */
+							 , signcounter				/* FIDO등록인증횟수 */
+							 , authenticatorversion		/* FIDO버전 */
+							 , timestamp				/* FIDO타임스탬프 */
+							 , fstatus					/* FIDO사용자상태 */
+							 , publicalg				/* FIDO알고리즘 */
+							 , authcounter				/* 인증횟수 */
+							 , sid						/* 시스템ID */
+							 , deviceinfo				/* 디바이스정보 */
+							 , authpolicy				/* 인증 정책 */
+							 , multipolicy				/* 다중인증 정책 */
+							 , deviceid					/* DEVICEID */
+							 , usernum					/* USER INDEX */
+							 , deviceidhash				/* DEVICEID HASH값 */
+							 , biotype					/* FIDO인증 TYPE */
+							 , b.OIDNAME svcOrganization	/* 서비스 기관 업체명 */
+							 , b.auth_type authType				/* 서비스 기관 서비스 타입 */
+						from tb_sp_fidomembers
+						<include refid="fidoMemberListJoin"/>
+						<include refid="fidoMemberListWhere"/>
+						order by userid asc
+				) t
+		) t order by timestamp desc
+		limit #{pageSet} offset #{offSet}
+	</select>
+	
+	<!-- 주어진 PK에 맞는 FIDO사용자관리 조회 -->
+	<select id="selectFidoMemberByPk" parameterType="tbSpMembersVO" resultType="tbSpFidoMembersVO">
+		select userid					/* 사용자ID */
+			 , aaid						/* AAID */
+			 , keyid					/* KEYID */
+			 , publickey				/* FIDO공개키 */
+			 , signcounter				/* FIDO등록인증횟수 */
+			 , authenticatorversion		/* FIDO버전 */
+			 , timestamp				/* FIDO타임스탬프 */
+			 , fstatus					/* FIDO사용자상태 */
+			 , publicalg				/* FIDO알고리즘 */
+			 , authcounter				/* 인증횟수 */
+			 , sid						/* 시스템ID */
+			 , deviceinfo				/* 디바이스정보 */
+			 , authpolicy				/* 인증 정책 */
+			 , multipolicy				/* 다중인증 정책 */
+			 , deviceid					/* DEVICEID */
+			 , usernum					/* USER INDEX */
+			 , deviceidhash				/* DEVICEID HASH값 */
+			 , biotype					/* FIDO인증 TYPE */
+		from tb_sp_fidomembers
+		where usernum = #{userNum}	/* USER INDEX */
+	</select>
+
+</mapper>

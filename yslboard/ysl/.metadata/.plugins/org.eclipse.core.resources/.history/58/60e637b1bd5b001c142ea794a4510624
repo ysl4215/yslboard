@@ -1,0 +1,7 @@
+package com.swempire.web.board.controller;
+
+public class test {
+	public static void main(String[] args) {
+		System.out.println((int) Math.ceil((double)listCnt/listSize));
+	}
+}

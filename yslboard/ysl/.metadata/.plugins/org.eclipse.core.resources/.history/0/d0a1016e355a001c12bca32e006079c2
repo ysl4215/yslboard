@@ -1,0 +1,21 @@
+package com.swempire.web.board.service;
+
+import java.util.List;
+
+import javax.inject.Inject;
+
+import com.swempire.web.board.dao.BoardDAO;
+import com.swempire.web.board.model.BoardVO;
+
+public class BoardServiceImpl implements BoardService{
+
+	@Inject
+	private BoardDAO boardDAO;
+
+	@Override
+	public List<BoardVO> getBoardList() throws Exception {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+}

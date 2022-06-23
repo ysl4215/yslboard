@@ -1,0 +1,14 @@
+package com.swempire.web;
+
+import org.junit.runner.RunWith;
+
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(locations = {
+		"classpath:spring/root-context.xml",
+
+		"classpath:spring/dataSource-context.xml"
+
+		})
+public class BoardDAOTest {
+
+}

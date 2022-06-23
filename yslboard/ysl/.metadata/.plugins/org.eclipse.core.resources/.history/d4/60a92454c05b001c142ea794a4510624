@@ -1,0 +1,22 @@
+package com.swempire.web.board.service;
+
+import java.util.List;
+
+import com.swempire.web.board.model.BoardVO;
+import com.swempire.web.board.model.Pagination;
+
+public interface BoardService {
+	
+	public List<BoardVO> getBoardList(Pagination pagination) throws Exception;
+	
+	public void insertBoard(BoardVO boardVO) throws Exception;
+	
+	public BoardVO getBoardContent(int bid) throws Exception;
+	
+	public void deleteBoard(int bid) throws Exception;
+
+	public void updateBoard(BoardVO boardVO) throws Exception;
+
+	//총 게시글 개수 확인
+	public int getBoardListCnt() throws Exception;
+}

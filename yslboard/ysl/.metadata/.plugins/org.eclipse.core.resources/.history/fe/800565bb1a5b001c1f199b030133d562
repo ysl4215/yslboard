@@ -1,0 +1,6 @@
+package com.swempire.web.error.controller;
+
+@ControllerAdvice
+public class CommonExceptionAdvice {
+
+}

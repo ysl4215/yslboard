@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.boardMgmt.dao.NoticeBoardMgmtMapper">
+
+<sql id="serviceListWhere">
+		<where>
+			<if test="svcOrganization != null and svcOrganization != ''">  and b.oidname = #{svcOrganization}</if>
+			<if test="condSearchNm != null and condSearchNm != ''">
+				<if test="condSearchType == 01 "> and reg_id like concat ('%',#{condSearchNm},'%')</if>
+				<if test="condSearchType == 02 "> and title like concat ('%',#{condSearchNm},'%')</if>
+				<if test="condSearchType == null or condSearchType =='' "> and (reg_id like concat('%',#{condSearchNm},'%')
+				or title like concat('%',#{condSearchNm},'%'))</if>
+			 </if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and reg_dt <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+				and reg_dt <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			</if>
+			<if test=" siteManager == 3 ">
+				and a.oidkey in ( #{svcOrganizationKey}, '000' )
+			</if>
+			<if test=" siteManager == 4 ">
+				and a.svcnum in ( #{svcNum}, '0' )
+			</if>
+			<if test="siteManager != null or siteManager != '' ">
+				and gubun = '2'
+			</if>
+		</where>
+	</sql>
+	
+	<!-- 정책 연동 URL 로우 카운트 조회 -->
+	<select id="selectNoticeBoardForRowCount" parameterType="commonVO" resultType="int">
+		/* noticeBoardMapper.selectNoticeBoardForRowCount */
+		select count(*)
+		from tb_sp_board a
+		left outer join tb_sp_organization b on a.oidkey = b.oidkey
+		<include refid="serviceListWhere"/>
+	</select>
+	
+	<!-- 정책 연동 URL 리스트 조회  -->
+	<select id="selectNoticeBoardForList" parameterType="commonVO" resultType="TbSpNoticeBoardVO">
+		/* noticeBoardMapper.selectNoticeBoardForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						select board_id				         	/* 번호 */
+							 , gubun			                /* 구분 */
+							 , b.oidname svcOrganization	                /* 구분 */
+							 , title	                        /* 제목 */
+							 , contents							/* 내용 */
+							 , reg_id rid                           /* 작성자 ID */                       /* 작성자 */
+							 , reg_dt rdate	
+							 , a.svcnum						/* 일시 */
+						from tb_sp_board a
+						left outer join tb_sp_organization b on a.oidkey = b.oidkey
+						<include refid="serviceListWhere"/>
+											/* 정책번호 */
+				) t				
+		) t order by board_id desc
+		limit #{pageSet} offset #{offSet} 
+	</select>
+	
+	<!-- 정책 연동 조회 -->
+	<select id="selectNoticeBoardByPk" parameterType="TbSpNoticeBoardVO" resultType="TbSpNoticeBoardVO">
+		/* noticeBoardMapper.selectNoticeBoardByPk */
+	select svcnum		/* 서비스 NUM */
+			 , board_id		/* 서비스명 */
+			 , gubun		/* 서비스식별번호 */
+			 , title		/* 시간 */
+			 , contents	    /* 상태 */
+			 , reg_id		/* 서비스APPID */
+			 , reg_dt rdate /* 서비스FACETSURL */
+		from tb_sp_board
+		where board_id = cast(#{board_id} as integer)						/* 정책번호 */
+	</select>
+	
+	<!-- 정책 연동 URL 정보 저장 -->
+	<insert id="insertNoticeBoard" parameterType="TbSpNoticeBoardVO">
+		/* noticeBoardMapper.insertNoticeBoardMgmtService */
+		insert into tb_sp_board (
+		        gubun
+			,	title			/* 정책명 */
+			,	contents	/* 정책 연동 URL */
+			,   reg_id
+			,   reg_dt
+			,   svcnum			/* 등록일시 */
+			,	oidkey
+		) values (
+		        '2'
+			,	#{title}		/* 정책명 */
+			,	#{contents}	
+			,   #{rid}        /* 정책 연동 URL */
+			,	now()
+			,   #{svcnum}				/* 등록일시 */
+			,	#{svcOrganizationKey}
+		)
+	</insert>
+	
+	<!-- 정책 연동 URL 정보 수정 -->
+	<update id="updateNoticeBoard" parameterType="TbSpNoticeBoardVO">
+		/* noticeBoardMapper.updateNoticeBoard */
+		update tb_sp_board set
+				title = #{title}			               	/* 정책명 */
+			,	reg_id = #{rid}	                      /* 정책 연동 URL */
+			,	contents = #{contents}						/* 수정일시 */
+		where board_id = cast(#{board_id} as integer)							/* 정책번호 */
+	</update>
+	
+	<!-- 정책 연동 URL 삭제 -->
+	<delete id="deleteNoticeBoard" parameterType="TbSpNoticeBoardVO">
+		/* noticeBoardMapper.deleteNoticeBoard */
+	delete from tb_sp_board where board_id = cast(#{board_id} as integer)
+	</delete>
+
+</mapper>

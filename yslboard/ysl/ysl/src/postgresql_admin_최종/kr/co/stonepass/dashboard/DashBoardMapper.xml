@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.dashboard.dao.DashBoardMapper">
+
+	<!-- 관리자관리 조인 -->
+	<!-- <sql id="selectRegLogByForJoin">
+		 T1 
+
+		 left outer join tb_sp_organization T3
+		 on (T1.oidkey = T3.oidkey)
+	</sql>
+	<sql id="selectRegLogByForWhere">
+		<where>
+			<if test="siteManager != null and siteManager != ''"> and T1.siteManager > 2</if> 리스트 구분
+			<if test="svcOrganization != null and svcOrganization != ''"> and T3.OIDNAME = #{svcOrganization}</if> 셀렉트 선택
+			<if test="siteManager == 3 or siteManager == 4 ">업체 구분
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and T3.OIDKEY = #{svcOrganizationKey}</if>
+			</if>
+		</where>
+	</sql> -->
+	
+	<!-- 일별 사용자 등록 수 -->
+	<select id="selectRegLogByRegister" parameterType="commonVO" resultType="int">
+		select count(*) as "CNT"
+		from (select sid			as sid
+					, LOGINDATETIME	as LOGINDATETIME
+					, LOGINTYPE		as logintype
+				from tb_sp_reglog
+			union all
+			select sid				as sid
+					, REGDATETIME	as LOGINDATETIME
+					, updateflag	as logintype
+				from tb_sp_motpreglog
+			) a
+			left join tb_sp_service b on a.sid = b.SVCNUM
+		where logindatetime <![CDATA[ >= ]]>  to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') and logindatetime <![CDATA[ <= ]]>  to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+		  and logintype = '1'	/* 등록/해지 Type(1:등록) */
+		<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey}</if>
+		<if test="adminId != null and adminId != '' and siteManager == '4' "> 
+				and sid in (
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				)
+		</if>
+		
+		<if test="svcNum != null and svcNum != ''"> and sid = #{svcNum}</if>
+	</select>
+	
+	<!-- 일별 사용자 해지 수 -->
+	<select id="selectRegLogByClose" parameterType="commonVO" resultType="int">
+		select count(*) as "CNT"
+		from (select sid			as sid
+					, LOGINDATETIME	as LOGINDATETIME
+					, LOGINTYPE		as logintype
+				from tb_sp_reglog
+			union all
+			select sid				as sid
+					, REGDATETIME	as LOGINDATETIME
+					, updateflag	as logintype
+				from tb_sp_motpreglog
+			) a
+			left join tb_sp_service b on a.sid = b.SVCNUM
+		where logindatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') and logindatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+		  and logintype = '2'	/* 등록/해지 Type(2:해지) */
+		<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey}</if>
+		<if test="adminId != null and adminId != '' and siteManager == '4' "> 
+				and sid in (
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				)
+		</if>
+		
+		<if test="svcNum != null and svcNum != ''"> and sid = #{svcNum}</if>
+	</select>
+	
+	<!-- 일별 사용자 인증 수 -->
+	<select id="selectAuthLog" parameterType="commonVO" resultType="int">
+		select count(*) as "CNT"
+		from (select sid
+					, authdatetime
+				from tb_sp_authlog
+			union all
+			select sid
+					, authdatetime
+				from tb_sp_motpauthlog
+			) a 
+			left join tb_sp_service b on a.sid = b.SVCNUM
+		where authdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') and authdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+		<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey}</if>
+		<if test="adminId != null and adminId != '' and siteManager == '4' "> 
+				and sid in (
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				)
+		</if>
+		
+		<if test="svcNum != null and svcNum != ''"> and sid = #{svcNum}</if>
+	</select>
+	
+	<!-- 일별 사용자 인증 실패 수 -->
+	<select id="selectAuthFailLog" parameterType="commonVO" resultType="int">
+		select count(*) as "CNT"
+		from (select sid
+					, authdatetime
+				from tb_sp_authfaillog
+			union all
+			select sid
+					, authdatetime
+				from tb_sp_motpauthfaillog
+			) a 
+			left join tb_sp_service b on a.sid = b.SVCNUM
+		where authdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') and authdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+		<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey}</if>
+		<if test="adminId != null and adminId != '' and siteManager == '4' "> 
+				and sid in (
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				)
+		</if>
+		
+		<if test="svcNum != null and svcNum != ''"> and sid = #{svcNum}</if>
+	</select>
+	
+	<!-- 주간 사용자 인증 통계 -->
+	<select id="selectAuthLogByWeek" parameterType="commonVO" resultType="hashmap">
+		select "AUTHDATE"
+			 , count(*) as "CNT"
+		from (
+				select to_char(authdatetime, 'YYYYMMDD') as "AUTHDATE"
+		        from (select sid
+							, authdatetime
+						from tb_sp_authlog
+					union all
+					select sid
+							, authdatetime
+						from tb_sp_motpauthlog
+					) a
+		        	left join tb_sp_service b on a.sid = b.SVCNUM
+		        where authdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') and authdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+		        <if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey}</if>
+		        <if test="adminId != null and adminId != '' and siteManager == '4' "> 
+						and sid in (
+							select  b.svcnum  
+							from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+							inner join tb_sp_admin c on b.adminid = c.adminid 
+							where b.adminid = #{adminId} 
+						)
+				</if>
+		
+				<if test="svcNum != null and svcNum != ''"> and sid = #{svcNum}</if>
+		) t
+		group by "AUTHDATE"
+		order by "AUTHDATE" asc
+	</select>
+		
+	<!-- 주간 사용자 인증 실패 통계 -->
+	<select id="selectAuthFailLogByWeek" parameterType="commonVO" resultType="hashmap">
+		select "AUTHDATE"
+			 , count(*) as "CNT"
+		from (
+				select to_char(authdatetime, 'YYYYMMDD') as "AUTHDATE"
+		        from (select sid
+							, authdatetime
+						from tb_sp_authfaillog
+					union all
+					select sid
+							, authdatetime
+						from tb_sp_motpauthfaillog
+					) a 
+		        	left join tb_sp_service b on a.sid = b.SVCNUM
+		        where authdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') and authdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+		        <if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey}</if>
+		        <if test="adminId != null and adminId != '' and siteManager == '4' "> 
+						and sid in (
+							select  b.svcnum  
+							from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+							inner join tb_sp_admin c on b.adminid = c.adminid 
+							where b.adminid = #{adminId} 
+						)
+				</if>
+				<if test="svcNum != null and svcNum != ''"> and sid = #{svcNum}</if>
+		) t
+        group by "AUTHDATE"
+		order by "AUTHDATE" asc
+	</select>
+	
+	<!-- 월간 사용자 인증 통계 -->
+	<select id="selectAuthLogByMonth" parameterType="commonVO" resultType="hashmap">
+		select "AUTHDATE"
+			 , count(*) as "CNT"
+		from (
+				select to_char(authdatetime, 'YYYYMMDD') as "AUTHDATE"
+				from (select sid
+							, authdatetime
+						from tb_sp_authlog
+					union all
+					select sid
+							, authdatetime
+						from tb_sp_motpauthlog
+					) a 
+					left join tb_sp_service b on a.sid = b.SVCNUM
+				where authdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') and authdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey}</if>
+				<if test="adminId != null and adminId != '' and siteManager == '4' "> 
+						and sid in (
+							select  b.svcnum  
+							from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+							inner join tb_sp_admin c on b.adminid = c.adminid 
+							where b.adminid = #{adminId} 
+						)
+				</if>
+		
+				<if test="svcNum != null and svcNum != ''"> and sid = #{svcNum}</if>
+		) t
+		group by "AUTHDATE"
+		order by "AUTHDATE" asc
+	</select>
+		
+	<!-- 월간 사용자 인증 실패 통계 -->
+	<select id="selectAuthFailLogByMonth" parameterType="commonVO" resultType="hashmap">
+		select "AUTHDATE"
+			 , count(*) as "CNT"
+		from (
+				select to_char(authdatetime, 'YYYYMMDD') as "AUTHDATE"
+		        from (select sid
+							, authdatetime
+						from tb_sp_authfaillog
+					union all
+					select sid
+							, authdatetime
+						from tb_sp_motpauthfaillog
+					) a 
+		        	left join tb_sp_service b on a.sid = b.SVCNUM
+		        where authdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') and authdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+		        <if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey}</if>
+		        <if test="adminId != null and adminId != '' and siteManager == '4' "> 
+						and sid in (
+							select  b.svcnum  
+							from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+							inner join tb_sp_admin c on b.adminid = c.adminid 
+							where b.adminid = #{adminId} 
+						)
+				</if>
+				
+				<if test="svcNum != null and svcNum != ''"> and sid = #{svcNum}</if>
+		) t
+        group by "AUTHDATE"
+		order by "AUTHDATE" asc
+	</select>
+	
+	<!-- 사용자 인증종류 통계 -->
+	<select id="selectAuthLogType" parameterType="commonVO" resultType="hashmap">
+		select COALESCE(sum(case when biotype = 'PINCODE' then authtype1 else 0 end),0)  /* PIN */ 
+				, COALESCE(sum(case when biotype = 'PATTERN' then authtype2 else 0 end),0) /* 패턴 */ 
+				, COALESCE(sum(case when biotype = 'FINGERPRINT' then authtype3 else 0 end),0) /* FIDO */ 
+				, COALESCE(sum(case when biotype = 'OTP' then authtype4 else 0 end),0)  /* OTP */ 
+				, COALESCE(sum(authType1 + authType2 + authType3 + authtype4),0)  /* 전체합계 */ 
+				
+		from ( 
+				select biotype
+					  , (case when biotype = 'PINCODE' then 1 else 0 end) as authtype1
+		     		  , (case when biotype = 'PATTERN' then 1 else 0 end) as authtype2
+		     		  , (case when biotype = 'FINGERPRINT' then 1 else 0 end) as authtype3
+		     		  , (case when biotype = 'OTP' then 1 else 0 end) as authtype4
+		     		  , b.oidkey
+		     		  , a.sid
+				from (select sid
+							, authdatetime
+							, biotype
+						from tb_sp_authlog
+					union all
+					select sid
+							, authdatetime
+							, 'OTP' as biotype
+						from tb_sp_motpauthlog
+					) a 
+					left join tb_sp_service b on a.sid = b.SVCNUM
+				
+				where authdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') and authdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey}</if>
+				<if test="adminId != null and adminId != '' and siteManager == '4' "> 
+						and sid in (
+							select  b.svcnum  
+							from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+							inner join tb_sp_admin c on b.adminid = c.adminid 
+							where b.adminid = #{adminId} 
+						)
+				</if>
+				<if test="svcNum != null and svcNum != ''"> and sid = #{svcNum}</if>
+		) t
+	</select>
+	
+	<!-- 사용자 인증실패종류 통계 -->
+	<select id="selectAuthFailLogType" parameterType="commonVO" resultType="hashmap">
+		select COALESCE(sum(case when authtype = '4' then authtype1 else 0 end),0) as CNT1	/* PINCODE */
+		     , COALESCE(sum(case when authtype = '64' then authtype2 else 0 end),0) as CNT2	/* PATTERN */
+		     , COALESCE(sum(case when authtype = '8' then authtype3 else 0 end),0) as CNT3	/* FINGERPRINT */
+		     , COALESCE(sum(case when authtype = '128' then authtype4 else 0 end),0) as CNT4	/* OTP */
+		     , COALESCE(sum(authType1 + authType2 + authType3 + authtype4),0) as TOT_CNT 		/* 전체합계 */
+		     <if test="svcOrganizationKey != null and svcOrganizationKey != ''">
+		     	, t.oidkey
+		     	<if test="adminId != null and adminId != '' and siteManager == '4' ">
+    		 		, t.sid 
+    		 	</if>
+    		 </if>
+		from ( 
+				select authtype
+					  , (case when authtype = '4' then 1 else 0 end) as authtype1
+		     		  , (case when authtype = '64' then 1 else 0 end) as authtype2
+		     		  , (case when authtype = '8' then 1 else 0 end) as authtype3
+		     		  , (case when authtype = '128' then 1 else 0 end) as authtype4
+		     		  , b.oidkey 
+		     		  , a.sid  
+				from (select sid
+							, authdatetime
+							, authtype
+						from tb_sp_authfaillog
+					union all
+					select sid
+							, authdatetime
+							, 128	as authtype 
+						from tb_sp_motpauthfaillog
+					) a 
+					left join tb_sp_service b on a.sid = b.SVCNUM 
+				
+				where authdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS') and authdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and  oidkey = #{svcOrganizationKey}</if>
+						<if test="adminId != null and adminId != '' and siteManager == '4' "> 
+						and sid in (
+							select  b.svcnum  
+							from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+							inner join tb_sp_admin c on b.adminid = c.adminid 
+							where b.adminid = #{adminId} 
+						)
+				</if>
+				
+				<if test="svcNum != null and svcNum != ''"> and sid = #{svcNum}</if>
+		) t
+		<if test="svcOrganizationKey != null and svcOrganizationKey != ''">
+     		group by t.oidkey
+     		<if test="adminId != null and adminId != '' and siteManager == '4' ">
+  		 		, t.sid 
+  		 	</if>
+  		 </if>
+	</select>
+
+</mapper>

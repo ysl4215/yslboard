@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.userMgmt.dao.UserMgmtMapper">
+	
+	<!-- 사용자 리스트 검색조건 -->
+	<sql id="memberListJoin">
+<!-- 		a left outer join tb_sp_organization b 
+		on a.sid = b.svcnum
+		 -->
+		a left outer join tb_sp_service c on a.sid = c.svcnum 
+		left outer join tb_sp_organization b on (c.oidkey = b.oidkey) 
+	</sql>
+	<sql id="memberListWhere">
+		<where>
+			<!-- 관리자 구분 -->
+			<if test="siteManager == 3 ">
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey} </if>
+			</if>
+			<if test="siteManager ==  4 "><!-- 업체 구분 -->
+				and sid in (
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				) 
+			</if>
+			<!-- 무조건 실행 -->
+			<if test="siteManager != null and siteManager != ''"></if>
+			<!-- 탭 구분 -->
+			<!-- <if test="selTab != null and selTab != ''">
+				and biotype = #{selTab}
+			</if> -->
+			<!-- 검색 조건 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and b.OIDNAME = #{svcOrganization}</if> <!-- 셀렉트 선택 -->
+			<if test="status != null and status != ''"> and fstatus = cast(#{status} as integer)</if>
+			<!-- <if test="adminType != null and adminType != ''"> and sid = #{svcNum}</if> -->
+			<if test="condSearchNm != null and condSearchNm != ''">and userid like concat('%',#{condSearchNm},'%') </if>
+		</where>
+	</sql>
+	
+	<sql id="memberListWhere2">
+		<where>
+			<!-- 관리자 구분 -->
+			<if test="siteManager == 3 ">
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.oidkey = #{svcOrganizationKey} </if>
+			</if>
+			<if test="siteManager ==  4 "><!-- 업체 구분 -->
+				and sid in (
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				) 
+			</if>
+			<!-- 무조건 실행 -->
+			<if test="siteManager != null and siteManager != ''"></if>
+			<!-- 탭 구분 -->
+			<!-- <if test="selTab != null and selTab != ''">
+				and biotype = #{selTab}
+			</if> -->
+			<!-- 검색 조건 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and b.OIDNAME = #{svcOrganization}</if> <!-- 셀렉트 선택 -->
+			<if test="status != null and status != ''"> and status = cast(#{status} as integer)</if>
+			<!-- <if test="adminType != null and adminType != ''"> and sid = #{svcNum}</if> -->
+			<if test="condSearchNm != null and condSearchNm != ''">and userid like concat('%',#{condSearchNm},'%') </if>
+		</where>
+	</sql>
+	
+	<!-- 사용자 정보 로우 카운트 조회 -->
+	<select id="selectMemberForRowCount" parameterType="tbSpMembersVO" resultType="int">
+	select count(*) from (
+      select  t.userid /* 사용자ID */
+              ,t.sid /* 시스템ID */
+              ,t.svcorganization /* 기관명 */
+              ,t.svcname /* 서비스명 */
+              ,t.deviceinfo  /* 디바이스 정보 */
+              ,string_agg (t.biotype,' /') biotype
+     from    ( select userid /* 사용자ID */ 
+                      , sid /* 시스템ID */
+                      , deviceinfo /* 디바이스 정보 */
+                      , fstatus /* 상태 */
+                      , b.OIDNAME svcOrganization /* 서비스 기관 업체명 */ 
+                      , b.auth_type authType /* 서비스 기관 서비스 타입 */
+                      , c.svcname /* 서비스명 */
+                      , biotype
+                   	  , a.passstatus, a.userNum
+              from    tb_sp_fidomembers
+	  <include refid="memberListJoin"/>
+	 	<include refid="memberListWhere"/>
+
+ 	union all 
+ 
+              select a.userid /* 사용자ID */ 
+                    , a.sid /* 시스템ID */
+                    , deviceinfo /* 디바이스 정보 */
+                    ,status /* 상태 */ 
+                    , b.OIDNAME svcOrganization /* 서비스 기관 업체명 */ 
+                    , b.auth_type authType /* 서비스 기관 서비스 타입 */
+                    , c.svcname /* 서비스명 */
+                    , 'MOTP' biotype
+                    , a.passstatus, a.userNum
+            from TB_SP_MOTPMEMBERS
+	    <include refid="memberListJoin"/>
+		<include refid="memberListWhere2"/>
+		) t
+    group by t.userid,t.sid,t.svcorganization,t.svcname,t.deviceinfo ) t 
+	</select>
+	
+	<!-- 사용자 정보 리스트 조회 -->
+	<select id="selectMemberForList" parameterType="tbSpMembersVO" resultType="tbSpMembersVO">
+	     select  t.userid /* 사용자ID */
+              ,t.sid /* 시스템ID */
+              ,t.svcOrganization /* 기관명 */
+              ,t.svcname /* 서비스명 */
+              ,t.deviceinfo  /* 디바이스 정보 */
+              ,string_agg(t.biotype,' /') biotype
+              ,t.passstatus
+              ,t.userNum
+              ,(case when cast(t.timestamp as bigint)/1000<![CDATA[ < ]]> 1 then NULL
+              	else to_timestamp(cast(t.timestamp as bigint)/1000) end) as timestamp
+     from    (select userid /* 사용자ID */ 
+                      , sid /* 시스템ID */
+                      , deviceinfo /* 디바이스 정보 */
+                      , fstatus /* 상태 */
+                      , b.OIDNAME svcOrganization /* 서비스 기관 업체명 */ 
+                      , b.auth_type authType /* 서비스 기관 서비스 타입 */
+                      , c.svcname /* 서비스명 */
+                      , biotype
+                      , a.passstatus
+                      , a.userNum
+                      , a.timestamp as timestamp
+              from    tb_sp_fidomembers
+	  <include refid="memberListJoin"/>
+	 	<include refid="memberListWhere"/>
+
+ 	union all 
+ 
+              select a.userid /* 사용자ID */ 
+                    , a.sid /* 시스템ID */
+                    , deviceinfo /* 디바이스 정보 */
+                    ,status /* 상태 */ 
+                    , b.OIDNAME svcOrganization /* 서비스 기관 업체명 */ 
+                    , b.auth_type authType /* 서비스 기관 서비스 타입 */
+                    ,c.svcname /* 서비스명 */
+                    , 'MOTP' biotype
+                    , a.passstatus, a.userNum
+                    , NULL as timestamp
+            from TB_SP_MOTPMEMBERS
+	    <include refid="memberListJoin"/>
+		<include refid="memberListWhere2"/>
+		) t
+    group by t.userid,t.sid, t.svcorganization, t.svcname,t.deviceinfo, t.passstatus , t.userNum
+    		,t.timestamp
+  limit #{pageSet} offset #{offSet} 
+	</select>
+	
+	<!-- 사용자 정보 조회 -->
+	<select id="selectMemberByPk" parameterType="tbSpMembersVO" resultType="tbSpMembersVO">
+		select userid					/* 사용자ID */
+			 , aaid						/* AAID */
+			 , keyid					/* KEYID */
+			 , publickey				/* FIDO공개키 */
+			 , signcounter				/* FIDO등록인증횟수 */
+			 , authenticatorversion		/* FIDO버전 */
+			 , timestamp				/* FIDO타임스탬프 */
+			 , fstatus					/* FIDO사용자상태 */
+			 , publicalg				/* FIDO알고리즘 */
+			 , authcounter				/* 인증횟수 */
+			 , sid						/* 시스템ID */
+			 , deviceinfo				/* 디바이스정보 */
+			 , authpolicy				/* 인증 정책 */
+			 , multipolicy				/* 다중인증 정책 */
+			 , deviceid					/* DEVICEID */
+			 , usernum					/* USER INDEX */
+			 , deviceidhash				/* DEVICEID HASH값 */
+			 , biotype					/* FIDO인증 TYPE */
+		from tb_sp_fidomembers
+		where usernum = #{userNum}	/* USER INDEX */
+	</select>
+
+	<!-- fido 사용자 2차인증 상태(pass여부) 수정 -->
+	<update id="updatePassStatusFido" parameterType="tbSpMembersVO">
+		/* UserMgmtMapper.updatePassStatusFido */
+		update tb_sp_fidomembers
+			set passstatus = #{passStatus }
+			where userid = #{userId } and sid = cast(#{sid} as char)
+	</update>
+	<!-- otp 사용자 2차인증 상태(pass여부) 수정 -->
+	<update id="updatePassStatusOtp" parameterType="tbSpMembersVO">
+		/* UserMgmtMapper.updatePassStatusOtp */
+		update tb_sp_motpmembers
+			set passstatus = #{passStatus }
+			where userid = #{userId }
+				<if test="sid != null and sid != '' and sid != 0">
+					 and sid = cast(#{sid} as char)
+				</if>
+	</update>
+
+</mapper>

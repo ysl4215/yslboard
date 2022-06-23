@@ -1,0 +1,475 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.serviceMgmt.dao.ServiceMgmtMapper">
+	
+	<!-- 서비스관리 검색조건 -->
+	<sql id="selectServiceListJoin">
+		  a	left outer join tb_sp_organization b on a.oidkey = b.oidkey
+		  left outer join tb_sp_servicegrp c on a.svcnum = c.svcnum
+		  left outer join tb_sp_admin d on c.oidkey = d.oidkey and c.adminid = d.adminid
+		  <!-- left outer join tb_sp_admin c	on a.oidkey = c.oidkey -->
+	</sql>
+
+	
+
+	<sql id="serviceListWhere">
+		<where>
+		 	<if test="svcOrganization != null and svcOrganization != ''">  and b.oidname = #{svcOrganization} </if>
+			<if test="condSearchNm != null and condSearchNm != ''">
+				<if test="condSearchType == 01 "> and a.svcnum like concat('%',#{condSearchNm},'%')</if>
+				<if test="condSearchType == 02 "> and svcname like concat('%',#{condSearchNm},'%')</if>
+				<if test="condSearchType == null or condSearchType =='' "> and svcname like concat('%',#{condSearchNm},'%')
+				or svckey like concat('%',#{condSearchNm},'%')</if>
+			 </if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+			and	a.SVCDATE <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+		 	and a.SVCDATE <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			
+			</if>
+			<if test="siteManager == 3 or siteManager == 4 ">
+				and a.oidkey = #{svcOrganizationKey}
+				<!--  and a.svcnum = #{svcNum} --> 
+			</if>
+			<!-- 무조건 실행 -->
+			<if test="siteManager != null and siteManager != ''"> and a.oidkey NOT IN ('000') </if>
+			<!-- 검색 조건 -->
+		</where>
+	</sql>
+
+	<sql id="serviceListSiteAdminWhere">
+		<where>
+			
+		</where>
+	</sql>
+
+	<!-- 서비스관리 로우 카운트 조회 -->
+	<select id="selectServiceForRowCount" parameterType="commonVO" resultType="int">
+		/* ServiceMgmtMapper.selectServiceForRowCount */
+		select count(*)
+		from tb_sp_service
+		<include refid="selectServiceListJoin"/>
+		<include refid="serviceListWhere"/>
+	</select>
+	
+	<!-- 서비스관리 리스트 조회  -->
+	<select id="selectServiceForList" parameterType="commonVO" resultType="tbSpServiceVO">
+		/* ServiceMgmtMapper.selectServiceForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						select a.svcnum						/* 서비스 NUM */
+							 , svcname						/* 서비스명 */
+							 , svccode						/* 서비스코드 */
+							 , b.oidname svcOrganization		/* 서비스 업체명   */
+							 , svckey						/* 서비스식별번호 */
+							 , svcdate						/* 시간 */
+							 , svcstatus					/* 상태 */
+							 , svcappid						/* 서비스APPID */
+							 , a.uptdatetime					/* 수정일시 */
+							 , a.oidkey svcOrganizationKey
+							 ,svcifurl                         /*서비스 인터페이스 URL */
+							 , a.svc_div_cd						/* 서비스 구분 */
+							<!--  , FN_COM_VAL_NM('003', a.svc_div_cd) as svc_div_nm			/* 서비스 구분명 */ -->
+							 , a.auth_method_cd					/* 인증방식 */
+							 <!-- , FN_COM_VAL_NM('001', a.auth_method_cd) as auth_method_nm	/* 인증방식명 */ -->
+							 , a.payperuse							/* 과금방식 */ 
+							 <!-- , FN_COM_VAL_NM('006', a.payperuse) as payperuseNm			/* 과금방식명 */ -->
+							 , a.payper							/* 과금 */
+							 , a.auth_type							/* 인증종류  */
+							 <!-- , FN_COM_VAL_NM('002', a.auth_type) as auth_type_nm			/* 인증종류명 */ -->
+							 , applogo							/* 앱 로고 이미지 */
+							 ,	a.CLIENTLICENSE		/* 고객사라이센스 */
+							,	a.CLIENTSERVER		/* 고객사서버 */
+							,	a.CLIENTDB			/* 고객사DB */
+							<!-- , c.adminname -->
+							, string_agg(DISTINCT c.adminid , <!-- separator   -->', ' ORDER BY c.adminid) adminid	/* 서비스 명 리스트 컬럼  */
+							
+						from tb_sp_service
+						<include refid="selectServiceListJoin"/>
+						<include refid="serviceListWhere"/>
+						GROUP BY a.svcnum, b.oidname
+						
+				) t
+		) t		order by svcdate desc
+		limit #{pageSet} offset #{offSet} 
+	</select>
+	
+	<!-- 주어진  PK에 맞는 서비스관리 조회 -->
+	<select id="selectServiceByPk" parameterType="commonVO" resultType="tbSpServiceVO">
+		/* ServiceMgmtMapper.selectServiceByPk */
+		select a.svcnum		/* 서비스 NUM */
+			 , svcname		/* 서비스명 */
+			 , svckey		/* 서비스식별번호 */
+			  , svccode						/* 서비스코드 */
+			 , svcdate		/* 시간 */
+			 , svcstatus	/* 상태 */
+			 , svcappid		/* 서비스APPID */
+			 , svcfacetsurl /* 서비스FACETSURL */
+			 ,svcifurl                         /*서비스 인터페이스 URL */
+			 , a.svc_div_cd						/* 서비스 구분 */
+			 <!-- , FN_COM_VAL_NM('003', a.svc_div_cd) as svc_div_nm			/* 서비스 구분명 */ -->
+			 , a.auth_method_cd					/* 인증방식 */
+			 <!-- , FN_COM_VAL_NM('001', a.auth_method_cd) as auth_method_nm	/* 인증방식명 */ -->
+			 , a.payperuse							/* 과금방식 */
+			 <!-- , FN_COM_VAL_NM('006', a.payperuse) as payperuseNm			/* 과금방식명 */ -->
+			 , a.payper							/* 과금 */ 
+			 , a.auth_type							/* 인증종류  */
+			 <!-- , FN_COM_VAL_NM('002', a.auth_type) as auth_type_nm			/* 인증종류명 */ -->
+			 , applogo							/* 앱 로고 이미지 */
+			 , appbackground							/* 앱 배경 이미지 */
+			 ,	a.CLIENTLICENSE		/* 고객사라이센스 */
+			 ,	a.apptitle		/* APP 상단 문구 */
+			 ,	a.apphelpdesk		/* APP 고객센터 문구 */
+			 ,	a.CLIENTSERVER		/* 고객사서버 */
+			 ,	a.CLIENTDB			/* 고객사DB */
+			 
+			 , b.oidkey svcOrganizationKey
+			 <!-- , c.adminname -->
+			 
+		from tb_sp_service
+		<!-- <include refid="selectServiceListJoin"/> -->
+		a
+		left outer join tb_sp_organization b 
+		on a.oidkey = b.oidkey
+		where a.svcnum = #{svcNum}	/* 서비스 NUM */
+	</select>
+	
+	<!-- 주어진 PK에 맞는 서비스식별번호 정보 로우카운트 조회 -->
+	<select id="selectServiceByPkForRowCount" parameterType="tbSpServiceVO" resultType="int">
+		/* ServiceMgmtMapper.selectServiceByPkForRowCount */
+		select count(*)
+		from tb_sp_service
+		where svcnum = #{svcNum}	/* 서비스 NUM */
+	</select>
+	
+	<!-- 주어진 PK에 맞는 서비스식별코드 정보 로우카운트 조회 -->
+	<select id="selectServiceByCodeForRowCount" parameterType="tbSpServiceVO" resultType="int">
+		/* ServiceMgmtMapper.selectServiceByPkForRowCount */
+		select count(*)
+		from tb_sp_service
+		where svccode = #{svcCode} 	/* 서비스 NUM */
+	</select>
+	
+	<!-- 서비스관리 시퀀스 조회 -->
+	<select id="selectServiceNextSvcNum" resultType="int">
+		/* ServiceMgmtMapper.selectServiceNextSvcNum */
+		select ifnull(max(svcnum), 0)+1 from tb_sp_service
+	</select>
+	
+	<!-- 서비스관리 정보 저장 -->
+	<insert id="insertService" parameterType="tbSpServiceVO"  useGeneratedKeys="true" keyProperty="svcNum">
+		/* ServiceMgmtMapper.insertService */
+		insert into tb_sp_service (
+				svcnum				/* 서비스 NUM */
+			,	svcname				/* 서비스명 */
+			,   svccode				/* 서비스 코드 */
+			,	svckey				/* 서비스식별번호 */
+			,	svcdate				/* 시간 */
+			,	svcstatus			/* 상태 */
+			,	svcappid			/* 서비스APPID */
+			,	svcfacetsurl		/* 서비스FACETSURL */
+			,	svcifurl            /*서비스 인터페이스 URL */
+			,	oidkey	 			/* 서비스 업체 키값  */
+			,	oidnum	 			/* 서비스 업체 넘버  */
+			,	CLIENTLICENSE		/* 고객사라이센스 */
+			,	apptitle		/* APP 상단 문구 */
+			,	apphelpdesk		/* APP 고객센터 문구 */
+			,	CLIENTSERVER		/* 고객사서버 */
+			,	CLIENTDB			/* 고객사DB */
+			,	AUTH_METHOD_CD		/* 인증방법코드(1:단일인증,2:멀티인증,3:단일+멀티인증) */
+			,	AUTH_TYPE			/* 인증종류(방식)(1:PIN번호,2:패턴,3:지문,3:OTP) */
+			,	SVC_DIV_CD			/* 서비스구분코드(1:ASP형,2:설치형) */
+			,	PAYPERUSE			/* 과금방식 */
+			,	PAYPER				/* 과금 */
+			<if test="appLogo != null and appLogo != ''">,appLogo	/* 앱로고이미지  */</if>
+			<if test="appBackground != null and appBackground != ''">,appBackground	/* 앱배경이미지  */</if>
+		) values (
+				#{svcNum}			/* 서비스 NUM */
+			,	#{svcName}			/* 서비스명 */
+			,	#{svcCode}			/* 서비스코드 */
+			,	#{svcKey}			/* 서비스식별번호 */
+			,	#{svcDate}			/* 시간 */
+			,	cast(#{svcStatus} as integer)		/* 과금방식 */
+			<!-- ,	(
+					select case when (
+						select count(*) from tb_sp_organization a, tb_sp_service b
+						where a.SVCNUM = b.svcnum
+						and a.CLIENTLICENSE != null   or  a.CLIENTLICENSE !=''
+						and a.SVCNUM = #{svcNum}
+					) = 0 then 0 else #{svcStatus} end as svcStatus	/* 상태 */
+				) -->
+			,	#{svcAppid}						/* 서비스APPID */
+			,	#{svcFacetsUrl}					/* 서비스FACETSURL */
+			 ,	#{svcifurl}                         /*서비스 인터페이스 URL */
+			,   #{svcOrganizationKey}			/* 업체키 */
+			,   (select oidnum from tb_sp_organization where oidkey=#{svcOrganizationKey})			/* 업체넘버 */
+			,	#{clientLicense}				/* 고객사라이센스 */
+			,	#{apptitle}				/* APP 상단 문구 */
+			,	#{apphelpdesk}				/* APP 고객센터 문구 */
+			,	#{clientServer}					/* 고객사서버 */
+			,	#{clientDB}						/* 고객사DB */
+			,	#{auth_method_cd}				/* 인증방법코드(1:단일인증,2:멀티인증,3:단일+멀티인증) */
+			,	#{auth_type}					/* 인증종류(방식)(1:PIN번호,2:패턴,3:지문,3:OTP) */
+			,	#{svc_div_cd}					/* 서비스구분코드(1:ASP형,2:설치형) */
+			,	#{payPerUse}	 				/* 과금방식 */
+			,	#{payPer}						/* 과금 */
+			<if test="appLogo != null and appLogo != ''">,	#{appLogo}	/* 앱로고이미지  */</if>
+			<if test="appBackground != null and appBackground != ''">,	#{appBackground}	/* 앱로고이미지  */</if>
+		)
+	</insert>
+	
+		<!-- 초기 APP메뉴 데이터 저장 -->
+	<insert id="insertServiceAppMenu" parameterType="tbSpServiceVO">
+		/* ServiceMgmtMapper.insertServiceAppMenu */
+	insert into tb_sp_service_app_menu
+(
+SVCNUM 	/* 서비스 NUM */
+,OIDKEY /* 서비스 업체 키값  */
+,MENU_NM /* 메뉴명  */
+,URL    /* URL  */
+,SRT_SQ /* 정렬순서  */
+,REGDATETIME /* 등록일 */
+,MENU_IMAGE /* 메뉴 이미지 */
+,ENC_MENU_NM /* 메뉴 영어명 */
+
+)
+ (select
+  #{svcNum}			/* 서비스 NUM */
+ , #{svcOrganizationKey}			/* 업체키 */
+ ,MENU_NM /* 메뉴명  */
+,URL    /* URL  */
+,SRT_SQ /* 정렬순서  */
+,now() /* 등록일 */
+,MENU_IMAGE /* 메뉴 이미지 */
+,ENC_MENU_NM /* 메뉴 영어명 */
+ from  tb_sp_service_app_menu_defaulet)
+		
+	</insert>
+	
+	<!-- 서비스관리 로그 정보 저장 -->
+	<insert id="insertServiceLog" parameterType="tbSpServiceVO">
+		/* ServiceMgmtMapper.insertServiceLog */
+		insert into tb_sp_service_log (
+				svcnum				/* 서비스 NUM */
+			,	svcname				/* 서비스명 */
+			,	svckey				/* 서비스식별번호 */
+			,	svcdate				/* 시간 */
+			,	svcstatus			/* 상태 */
+			,	svcappid			/* 서비스APPID */
+			,	svcfacetsurl		/* 서비스FACETSURL */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일시 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+		) values (
+				#{svcNum}											/* 서비스 NUM */
+			,	#{svcName}											/* 서비스명 */
+			,	#{svcKey}											/* 서비스식별번호 */
+			,	#{svcDate}											/* 시간 */
+			,	cast(#{svcStatus} as integer)
+			<!-- ,	(
+					select case when (
+						select count(*) from tb_sp_organization a, tb_sp_service b
+						where a.SVCNUM = b.svcnum
+						and a.CLIENTLICENSE != null   or  a.CLIENTLICENSE !=''
+						and a.SVCNUM = #{svcNum}
+					) = 0 then 0 else #{svcStatus} end as svcStatus	/* 상태 */
+				) -->
+			,	#{svcAppid}											/* 서비스APPID */
+			,	#{svcFacetsUrl}										/* 서비스FACETSURL */
+			,	#{adminId}											/* 행위자ID */
+			,	#{adminName}										/* 행위자명 */
+			,	#{setDateTime}										/* 행위일시 */
+			,	#{adminIp}											/* 행위자IP */
+			,	#{adminComName}										/* 행위자COMNAME */
+			,	cast(#{actionType} as integer)										/* 행위타입 */
+			,	#{conduct, jdbcType=VARCHAR}						/* 행위 */
+			,	#{conductValue, jdbcType=VARCHAR}					/* 행위값 */
+		)
+	</insert>
+	
+
+	
+	<!-- 서비스관리 정보 조회해서 로그 정보 저장 insert ~ select -->
+	<insert id="insertServiceLogByPk" parameterType="tbSpServiceVO">
+		/* ServiceMgmtMapper.insertServiceLogByPk */
+		insert into tb_sp_service_log (
+				svcnum				/* 서비스 NUM */
+			,	svcname				/* 서비스명 */
+			,	svckey				/* 서비스식별번호 */
+			,	svcdate				/* 시간 */
+			,	svcstatus			/* 상태 */
+			,	svcappid			/* 서비스APPID */
+			,	svcfacetsurl		/* 서비스FACETSURL */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일시 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+		)
+			select svcnum												/* 서비스 NUM */
+				 , #{svcName}											/* 서비스명 */
+				 , svcKey												/* 서비스식별번호 */
+				 , #{svcDate}											/* 시간 */
+				 , #{svcStatus}											/* 상태 */
+				 , #{svcAppid}											/* 서비스APPID */
+				 , #{svcFacetsUrl}										/* 서비스FACETSURL */
+				 , #{adminId}											/* 행위자ID */
+				 , #{adminName}											/* 행위자명 */
+				 , #{setDateTime}										/* 행위일시 */
+				 , #{adminIp}											/* 행위자IP */
+				 , #{adminComName}										/* 행위자COMNAME */
+				 , cast(#{actionType} as integer)										/* 행위타입 */
+				 , #{conduct, jdbcType=VARCHAR}							/* 행위 */
+				 , #{conductValue, jdbcType=VARCHAR}					/* 행위값 */
+			from tb_sp_service
+			where svcnum = #{svcNum}	/* 서비스 NUM */
+	</insert>
+	
+	<!-- 서비스관리 정보 수정 -->
+	<update id="updateService" parameterType="tbSpServiceVO">
+		/* ServiceMgmtMapper.updateService */
+		update tb_sp_service set
+				svcname = #{svcName}			/* 서비스명 */
+			,	svcappid = #{svcAppid}			/* 서비스APPID */
+			,	svcStatus = cast(#{svcStatus} as integer)
+				<!-- ( select * from 
+					(
+						select case when (
+							select count(*) from tb_sp_organization a, tb_sp_service b
+							where a.SVCNUM = b.svcnum
+							and a.CLIENTLICENSE != null   or  a.CLIENTLICENSE !='' 
+							and a.SVCNUM = #{svcNum}
+						) = 0 then 0 else #{svcStatus} end as svcStatus	/* 상태 */
+					) s
+				) -->
+			,	svcfacetsurl = #{svcFacetsUrl}	/* 서비스FACETSURL */
+			 ,	svcifurl     =#{svcifurl}                    /*서비스 인터페이스 URL */
+			,	uptdatetime = #{svcDate}		/* 시간 */
+			,	CLIENTLICENSE = #{clientLicense}			/* 고객사라이센스 */
+			,	apptitle = #{apptitle}			/* App 상단 문구 */
+			,	apphelpdesk = #{apphelpdesk}			/* APP 고객센터 문구 */
+			,	CLIENTSERVER = #{clientServer}				/* 고객사서버 */
+			,	CLIENTDB = #{clientDB}						/* 고객사DB */
+			,	AUTH_METHOD_CD = #{auth_method_cd}			/* 인증방법코드(1:단일인증,2:멀티인증,3:단일+멀티인증) */
+			,	AUTH_TYPE = #{auth_type}					/* 인증종류(방식)(1:PIN번호,2:패턴,3:지문,3:OTP) */
+			,	SVC_DIV_CD = #{svc_div_cd}					/* 서비스구분코드(1:ASP형,2:설치형) */
+			,	PAYPERUSE = #{payPerUse}	 				/* 과금방식 */
+			,	PAYPER = #{payPer}							/* 과금 */
+			<if test="appLogo != null and appLogo != ''">,	APPLOGO = #{appLogo}	/* 앱로고이미지  */</if>
+			<if test="appBackground != null and appBackground != ''">,	APPBackground = #{appBackground}	/* 앱로고이미지  */</if>
+			
+		where svcnum = #{svcNum}				/* 서비스 NUM */
+	</update>
+
+	
+		<!-- 서비스 app메뉴 리스트 -->
+	<select id="selectServiceAppMenuList" parameterType="commonVo" resultType="tbSpAppmenuVO">
+		/* ServiceMgmtMapper.selectServiceAppMenuList */
+		select 
+			MENU_CD as menuCd
+			, SVCNUM
+			, OIDKEY
+			, MENU_NM as menuNm	
+			, URL
+			, SRT_SQ as srtSq
+			, REGDATETIME
+			,MENU_IMAGE
+			,ENC_MENU_NM
+				from tb_sp_service_app_menu
+				where svcnum = #{svcNum} 	/* 서비스 NUM */
+				order by srtSq
+	</select>
+		<!-- APP 메뉴 insert -->
+	<insert id="insertAppMenu" parameterType="tbSpAppmenuVO">
+	/* ServiceMgmtMapper.insertAppMenu */
+		insert into tb_sp_service_app_menu(
+		SVCNUM
+		,OIDKEY
+		,MENU_NM
+		, URL
+		,SRT_SQ
+		,REGDATETIME
+		,MENU_IMAGE
+		,ENC_MENU_NM
+		)values(
+		#{svcNum}
+		,#{oidKey}
+		,#{menuNm}
+		,#{url}
+		,#{srtSq}
+		,now()
+		,#{menu_image}
+		,#{enc_menu_nm}
+		)
+	
+	</insert>
+	<!-- APP 메뉴 정보 update -->
+	<update id="updateAppMenu" parameterType="tbSpAppmenuVO">
+		/* ServiceMgmtMapper.updateAppMenu */
+	update tb_sp_service_app_menu
+	set
+		MENU_NM= #{menuNm}
+		, URL = #{url}
+		, SRT_SQ= #{srtSq}
+		, MENU_IMAGE= #{menu_image}
+		, ENC_MENU_NM= #{enc_menu_nm}
+	where  MENU_CD = #{menuCd}
+	</update>
+	<!-- APP 메뉴 정보 delete -->
+	<delete id="deleteAppMenu" parameterType="tbSpAppmenuVO">
+	   /* ServiceMgmtMapper.deleteAppMenu */
+		delete from tb_sp_service_app_menu
+		 where  MENU_CD = #{menuCd}
+	</delete>
+	
+	<!-- APP 메뉴 순서 update -->
+
+	<update id="updateAppMenuSetSortSq" parameterType="tbSpAppmenuVO">
+	   /* ServiceMgmtMapper.updateAppMenuSetSortSq */
+	   update tb_sp_service_app_menu
+	   	set SRT_SQ= #{srtSq}
+	   where  MENU_CD = #{menuCd}
+	</update>
+	
+	<!-- 정책등록 -->
+	<insert id="insertPolicy" parameterType="tbSpServiceVO">
+		<!-- insert into spdb.tb_sp_policy ( -->
+		insert into tb_sp_policy (
+				SID
+			,	AUTHPOLICY
+			,	MULTIPOLICY
+			,	PWRETRYPOLICY
+			,	PINRETRYPOLICY
+			,	AUTHTIMEPOLICY
+			,	TRUSTEDAPPID
+			,	SIGNSAVEPOLICY
+			,	BLOCKPOLICY
+			,	PRIORITYPOLICY
+			,	DEVICEPOLICY
+			,	SYSTEMIDPOLICY
+		) values (
+				#{svcNum}
+			,	1
+			,	0
+			,	0
+			,	0
+			,	0
+			,	''
+			,	0
+			,	0
+			,	0
+			,	0
+			,	1
+		)
+	</insert>
+</mapper>

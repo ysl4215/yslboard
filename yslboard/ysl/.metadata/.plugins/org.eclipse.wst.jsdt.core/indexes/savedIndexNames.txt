@@ -1,0 +1,8 @@
+INDEX VERSION 1.4+D:\ysl\yslboard2\ysl\.metadata\.plugins\org.eclipse.wst.jsdt.core\indexes
+3462678710.index
+1686744092.index
+2043716111.index
+3817266934.index
+3064419267.index
+3274545957.index
+3148430239.index

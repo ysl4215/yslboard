@@ -1,0 +1,15 @@
+package com.swempire.web.board.service;
+
+import java.util.List;
+
+import com.swempire.web.board.model.BoardVO;
+
+public class BoardServiceImpl implements BoardService{
+
+	@Override
+	public List<BoardVO> getBoardList() throws Exception {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+}

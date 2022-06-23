@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.siteMenuMgmt.dao.SiteMenuMgmtMapper">
+
+	<!-- 메뉴 정보 로우카운트 조회 -->
+	<select id="selectMenuForRowCount" parameterType="tbSpMenuMgmtVO" resultType="int">
+		/* MenuMgmtMapper.selectMenuForRowCount */
+		select count(*)
+		from (
+				select distinct mm.*
+				from tb_sp_menu_mgmt mm
+				left outer join stonepass.TB_SP_MENU_MGMT mm2 on mm.p_menu_cd = mm2.menu_cd
+		) t
+	</select>
+	
+	<!-- 메뉴 정보 리스트 조회 -->
+	<select id="selectMenuForList" parameterType="tbSpMenuMgmtVO" resultType="tbSpMenuMgmtVO">
+		select t1.*
+		from (
+				select distinct mm.menu_cd as menuCd	/* 메뉴코드 */
+					 , mm.p_menu_cd as pMenuCd			/* 상위메뉴코드 */
+					 , mm.url							/* URL */
+					 , mm.menu_nm as menuNm				/* 메뉴명 */
+					 , mm.srt_sq as srtSq				/* 정렬 */
+					 , mm.lv							/* 메뉴레벨 */
+					 , mm.regdatetime					/* 작성일 */
+					 , mm.uptdatetime					/* 수정일 */
+				from tb_sp_menu_mgmt mm
+				where (mm.p_menu_cd is null or mm.p_menu_cd = '')
+		   	   	order by mm.srt_sq asc, mm.regdatetime asc
+		) t1
+	</select>
+	
+	<!-- 하위 메뉴 정보 리스트 조회 -->
+	<select id="selectMenuChildForList" parameterType="tbSpAuthMgmtVO" resultType="tbSpMenuMgmtVO">
+		select t1.*
+		from (
+				select distinct mm.menu_cd as menuCd	/* 메뉴코드 */
+					 , mm.p_menu_cd as pMenuCd			/* 상위메뉴코드 */
+					 , mm.url							/* URL */
+					 , mm.menu_nm as menuNm				/* 메뉴명 */
+					 , mm.srt_sq as srtSq				/* 정렬 */
+					 , mm.lv							/* 메뉴레벨 */
+					 , mm.regdatetime					/* 작성일 */
+				from tb_sp_menu_mgmt mm
+		   	   	where mm.p_menu_cd = #{menuCd}			/* 메뉴코드 */
+		   	   	order by mm.srt_sq asc, mm.regdatetime asc
+		) t1
+	</select>
+	
+	<!-- 권한별 메뉴 정보 리스트 조회 -->
+	<select id="selectAuthMenuForList" parameterType="tbSpAuthMgmtVO" resultType="tbSpMenuMgmtVO">
+		select t1.*
+		from (
+				select distinct mm.menu_cd as menuCd	/* 메뉴코드 */
+					 , mm.p_menu_cd as pMenuCd			/* 상위메뉴코드 */
+					 , mm.url							/* URL */
+					 , mm.menu_nm as menuNm				/* 메뉴명 */
+					 , mm.srt_sq as srtSq				/* 정렬 */
+					 , mm.lv							/* 메뉴레벨 */
+					 , mm.regdatetime					/* 작성일 */
+					 , (select count(*) from tb_sp_menu_mgmt where p_menu_cd = mm.menu_cd) as childMenuCnt	/* 하위메뉴 갯수 */
+					 , am.admintype
+				from tb_sp_menu_mgmt mm
+				inner join (select amm.admintype	/* 권한코드 */
+								 , amm.menu_cd		/* 메뉴코드 */
+						    from tb_sp_auth_mgmt am
+							inner join tb_sp_auth_menu_mgmt amm on am.admintype = amm.admintype
+							where am.admintype = #{adminType}) am
+		   	   	  on mm.menu_cd = am.menu_cd
+		   	   	where (mm.p_menu_cd is null or mm.p_menu_cd = '')
+		   	   	order by mm.srt_sq asc, mm.regdatetime asc
+		) t1
+	</select>
+	
+	<!-- 권한별 하위 메뉴 정보 리스트 조회 -->
+	<select id="selectAuthMenuChildForList" parameterType="tbSpAuthMgmtVO" resultType="tbSpMenuMgmtVO">
+		select t1.*
+		from (
+				select distinct mm.menu_cd as menuCd	/* 메뉴코드 */
+					 , mm.p_menu_cd as pMenuCd			/* 상위메뉴코드 */
+					 , mm.url							/* URL */
+					 , mm.menu_nm as menuNm				/* 메뉴명 */
+					 , mm.srt_sq as srtSq				/* 정렬 */
+					 , mm.lv							/* 메뉴레벨 */
+					 , mm.regdatetime					/* 작성일 */
+					 , (select count(*) from tb_sp_menu_mgmt where p_menu_cd = mm.menu_cd) as childMenuCnt	/* 하위메뉴 갯수 */
+					 , am.admintype
+				from tb_sp_menu_mgmt mm
+				inner join (select amm.admintype	/* 권한코드 */
+								 , amm.menu_cd		/* 메뉴코드 */
+							from tb_sp_auth_mgmt am
+							inner join tb_sp_auth_menu_mgmt amm on am.admintype = amm.admintype
+							where am.admintype = #{adminType}) am
+		   	   	  on mm.menu_cd = am.menu_cd
+		   	   	where mm.p_menu_cd = #{menuCd}		/* 메뉴코드 */
+		   	   	order by mm.srt_sq asc, mm.regdatetime asc
+		) t1
+	</select>
+	
+	<!-- 권한별 메뉴 정보 리스트 조회 -->
+	<select id="selectAuthMenuForOuterList" parameterType="tbSpAuthMgmtVO" resultType="tbSpMenuMgmtVO">
+		select t1.*
+		from (
+				select distinct mm.menu_cd as menuCd	/* 메뉴코드 */
+					 , mm.p_menu_cd as pMenuCd			/* 상위메뉴코드 */
+					 , mm.url							/* URL */
+					 , mm.menu_nm as menuNm				/* 메뉴명 */
+					 , mm.srt_sq as srtSq				/* 정렬 */
+					 , mm.lv							/* 메뉴레벨 */
+					 , mm.regdatetime					/* 작성일 */
+					 <if test="adminType != null and adminType != ''">, am.admintype</if>	/* 메뉴코드 */
+				from tb_sp_menu_mgmt mm
+				left outer join (select amm.admintype	/* 권한코드 */
+									  , amm.menu_cd		/* 메뉴코드 */
+							 	 from tb_sp_auth_mgmt am
+							 	 inner join tb_sp_auth_menu_mgmt amm on am.admintype = amm.admintype
+							     <if test="adminType != null and adminType != ''"> where am.admintype = cast(#{adminType} as integer)</if>) am
+		   	   	  on mm.menu_cd = am.menu_cd
+		   	   	where (mm.p_menu_cd is null or mm.p_menu_cd = '')
+		   	   	order by mm.srt_sq asc, mm.regdatetime asc
+		) t1
+	</select>
+	
+	<!-- 권한별 하위 메뉴 정보 리스트 조회 -->
+	<select id="selectAuthMenuChildForOuterList" parameterType="tbSpAuthMgmtVO" resultType="tbSpMenuMgmtVO">
+		select t1.*
+		from (
+				select distinct mm.menu_cd as menuCd	/* 메뉴코드 */
+					 , mm.p_menu_cd as pMenuCd			/* 상위메뉴코드 */
+					 , mm.url							/* URL */
+					 , mm.menu_nm as menuNm				/* 메뉴명 */
+					 , mm.srt_sq as srtSq				/* 정렬 */
+					 , mm.lv							/* 메뉴레벨 */
+					 , mm.regdatetime					/* 작성일 */
+					 <if test="adminType != null and adminType != ''">, am.admintype</if>	/* 권한코드 */
+				from tb_sp_menu_mgmt mm
+				left outer join (select amm.admintype	/* 권한코드 */
+									  , amm.menu_cd		/* 메뉴코드 */
+							 	 from tb_sp_auth_mgmt am
+							 	 inner join tb_sp_auth_menu_mgmt amm on am.admintype = amm.admintype
+							     <if test="adminType != null and adminType != ''"> where am.admintype = cast(#{adminType} as integer)</if>) am
+		   	   	  on mm.menu_cd = am.menu_cd
+		   	   	where p_menu_cd = #{menuCd}				/* 메뉴코드 */
+		   	   	order by mm.srt_sq asc, mm.regdatetime asc
+		) t1
+	</select>
+	
+	<!-- 주어진 관리자ID에 해당하는 메뉴 리스트 조회 -->
+	<select id="selectAdminMenuForList" parameterType="java.lang.String" resultType="tbSpMenuMgmtVO">
+		select t.*
+		from (
+				select distinct mm.menu_cd as menuCd	/* 메뉴코드 */
+					 , mm.p_menu_cd as pMenuCd			/* 상위메뉴코드 */
+					 , mm.url							/* URL */
+					 , mm.menu_nm as menuNm				/* 메뉴명 */
+					 , mm.srt_sq as srtSq				/* 정렬 */
+					 , mm.lv							/* 메뉴레벨 */
+					 , mm.regdatetime					/* 작성일 */
+					 , (select count(*) from tb_sp_menu_mgmt where p_menu_cd = mm.menu_cd) as childMenuCnt	/* 하위메뉴 갯수 */
+					 , am.admintype
+				from tb_sp_menu_mgmt mm
+				inner join (select a.admintype
+								 , amm.menu_cd
+						 	from tb_sp_admin a
+						 	inner join tb_sp_admin_menu_mgmt amm on a.adminid = amm.adminid
+						 	where a.adminid = #{adminId}) am
+		   	   	   on mm.menu_cd = am.menu_cd
+		   	   	where (mm.p_menu_cd is null or mm.p_menu_cd = '')
+				order by mm.srt_sq, mm.regdatetime
+		) t
+	</select>
+	
+	<!-- 주어진 관리자ID에 해당하는 하위 메뉴 리스트 조회 -->
+	<select id="selectAdminMenuChildForList" parameterType="tbSpMenuMgmtVO" resultType="tbSpMenuMgmtVO">
+		select t.*
+		from (
+				select distinct mm.menu_cd as menuCd	/* 메뉴코드 */
+					 , mm.p_menu_cd as pMenuCd			/* 상위메뉴코드 */
+					 , mm.url							/* URL */
+					 , mm.menu_nm as menuNm				/* 메뉴명 */
+					 , mm.srt_sq as srtSq				/* 정렬 */
+					 , mm.lv							/* 메뉴레벨 */
+					 , mm.regdatetime					/* 작성일 */
+					 , (select count(*) from tb_sp_menu_mgmt where p_menu_cd = mm.menu_cd) as childMenuCnt	/* 하위메뉴 갯수 */
+					 , am.admintype
+				from tb_sp_menu_mgmt mm
+				inner join (select a.admintype
+								 , amm.menu_cd
+						 	from tb_sp_admin a
+						 	inner join tb_sp_admin_menu_mgmt amm on a.adminid = amm.adminid
+						 	where a.adminid = #{adminId}) am
+		   	   	   on mm.menu_cd = am.menu_cd
+		   	   	where p_menu_cd = #{menuCd}
+				order by mm.srt_sq, mm.regdatetime
+		) t
+	</select>
+	
+	<!-- 메뉴 정보 조회 -->
+	<select id="selectMenuByPk" parameterType="tbSpMenuMgmtVO" resultType="tbSpMenuMgmtVO">
+		select menu_cd as menuCd		/* 메뉴코드 */
+			 , p_menu_cd as pMenuCd		/* 상위메뉴코드 */
+			 , url						/* URL */
+			 , menu_nm as menuNm		/* 메뉴명 */
+			 , (select menu_nm from tb_sp_menu_mgmt where menu_cd = mm.p_menu_cd limit 1 offset 1) as pMenuNm	/* 상위메뉴명 */
+			 , srt_sq as srtSq			/* 정렬 */
+			 , lv						/* 메뉴레벨 */
+		from tb_sp_menu_mgmt mm
+		where menu_cd = #{menuCd}		/* 메뉴코드 */
+	</select>
+	
+	<!-- 상위 메뉴 정보 조회 -->
+	<select id="selectMenuByPMenuCdIsNull" parameterType="tbSpMenuMgmtVO" resultType="tbSpMenuMgmtVO">
+		select menu_cd as menuCd	/* 메뉴코드 */
+			 , menu_nm as menuNm	/* 메뉴명 */
+		from tb_sp_menu_mgmt
+		where (p_menu_cd is null or p_menu_cd = '')
+		order by srt_sq, regdatetime asc
+	</select>
+	
+	<!-- 메뉴코드 조회 -->
+	<select id="selectMenuForNextMenuCd" resultType="string">
+		select case when max(menu_cd) is null then 1 else cast(max(menu_cd) as integer)+1 end from tb_sp_menu_mgmt
+	</select>
+	
+	<!-- 주어진 레벨, 정렬, 상위메뉴코드에 맞는 메뉴 정보 로우카운트 조회 -->
+	<select id="selectMenuForRowCountBySrtSq" parameterType="tbSpMenuMgmtVO" resultType="int">
+		select count(*) from tb_sp_menu_mgmt
+		where menu_cd <![CDATA[ <> ]]> #{menuCd}	/* 메뉴코드 */
+		<if test="pMenuCd != null and pMenuCd != ''"> and p_menu_cd = #{pMenuCd}</if>
+		  and lv = #{lv}							/* 메뉴레벨 */
+		  and srt_sq = cast(#{srtSq} as integer)	/* 정렬 */
+	</select>
+	
+	<!-- 메뉴관리 관계테이블에 등록 된 로우 카운트 조회 -->
+	<select id="selectMenuForRowCountByPMenuCd" parameterType="tbSpMenuMgmtVO" resultType="int">
+		select count(*)
+		from tb_sp_menu_mgmt
+		where p_menu_cd = #{menuCd}	/* 메뉴코드 */
+	</select>
+	
+	<!-- 주어진 메뉴코드에 맞는 등록 된 하위메뉴 로우 카운트 조회 -->
+	<select id="selectMenuForRowCountByRelation" parameterType="tbSpMenuMgmtVO" resultType="int">
+		select count(*)
+		from tb_sp_menu_mgmt mm
+		inner join tb_sp_auth_menu_mgmt amm on mm.menu_cd = amm.menu_cd
+		where mm.menu_cd = #{menuCd}	/* 메뉴코드 */
+	</select>
+	
+	<!-- 메뉴 정보 등록 -->
+	<insert id="insertMenu" parameterType="tbSpMenuMgmtVO">
+		insert into tb_sp_menu_mgmt (
+				menu_cd			/* 메뉴코드 */
+			, 	p_menu_cd		/* 상위메뉴코드 */
+			,	url				/* URL */
+			,	menu_nm			/* 메뉴명 */
+			,	srt_sq			/* 정렬 */
+			,	lv				/* 메뉴레벨 */
+			,	adminid			/* 작성자ID */
+			,	regdatetime		/* 작성일 */
+		) values (
+				#{menuCd}						/* 메뉴코드 */
+			, 	#{pMenuCd, jdbcType=VARCHAR}	/* 상위메뉴코드 */
+			,	#{url}							/* URL */
+			,	#{menuNm}						/* 메뉴명 */
+			,	cast(#{srtSq} as integer)		/* 정렬 */
+			<choose>
+				<when test="pMenuCd != null and pMenuCd != ''">
+					, ( select * from ( select lv + 1 from tb_sp_menu_mgmt a where menu_cd = #{pMenuCd} ) a )	/* 메뉴레벨 */
+				</when>
+				<otherwise>, 1</otherwise>
+			</choose>
+			,	#{adminId}						/* 작성자ID */
+			,	#{regDateTime}					/* 작성일 */
+		)
+	</insert>
+	
+	<!-- 메뉴정보로그 등록 -->
+	<insert id="insertMenuLog" parameterType="tbSpMenuMgmtVO">
+		insert into tb_sp_menu_mgmt_log (
+				menu_cd				/* 메뉴코드 */
+			, 	p_menu_cd			/* 상위메뉴코드 */
+			,	url					/* URL */
+			,	menu_nm				/* 메뉴명 */
+			,	srt_sq				/* 정렬 */
+			,	lv					/* 메뉴레벨 */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일시 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+		) values (
+				#{menuCd}												/* 메뉴코드 */
+			, 	#{pMenuCd, jdbcType=VARCHAR}							/* 상위메뉴코드 */
+			,	#{url}													/* URL */
+			,	#{menuNm}												/* 메뉴명 */
+			,	cast(#{srtSq} as integer)								/* 정렬 */
+			<choose>
+				<when test="pMenuCd != null and pMenuCd != ''">
+					, ( select * from ( select lv + 1 from tb_sp_menu_mgmt a where menu_cd = #{pMenuCd} ) a )	/* 메뉴레벨 */
+				</when>
+				<otherwise>, 1</otherwise>
+			</choose>
+			,	#{adminId}												/* 행위자ID */
+			,	#{adminName}											/* 행위자명 */
+			,	#{setDateTime}											/* 행위일시 */
+			,	#{adminIp}												/* 행위자IP */
+			,	#{adminComName}											/* 행위자COMNAME */
+			,	#{actionType}											/* 행위타입 */
+			,	#{conduct, jdbcType=VARCHAR}							/* 행위 */
+			,	#{conductValue, jdbcType=VARCHAR}						/* 행위값 */
+		)
+	</insert>
+	
+	<!-- 메뉴정보로그 등록 insert ~ select -->
+	<insert id="insertMenuLogByPk" parameterType="tbSpMenuMgmtVO">
+		insert into tb_sp_menu_mgmt_log (
+				menu_cd				/* 메뉴코드 */
+			, 	p_menu_cd			/* 상위메뉴코드 */
+			,	url					/* URL */
+			,	menu_nm				/* 메뉴명 */
+			,	srt_sq				/* 정렬 */
+			,	lv					/* 메뉴레벨 */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일시 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+		)
+			select menu_cd													/* 메뉴코드 */
+				 , p_menu_cd												/* 상위메뉴코드 */
+				 , url														/* URL */
+				 , menu_nm													/* 메뉴명 */
+				 , srt_sq													/* 정렬 */
+				 , lv														/* 메뉴레벨 */
+				 , #{adminId}												/* 행위자ID */
+				 , #{adminName}												/* 행위자명 */
+				 , #{setDateTime}											/* 행위일시 */
+				 , #{adminIp}												/* 행위자IP */
+				 , #{adminComName}											/* 행위자COMNAME */
+				 , #{actionType}											/* 행위타입 */
+				 , #{conduct, jdbcType=VARCHAR}								/* 행위 */
+				 , #{conductValue, jdbcType=VARCHAR}						/* 행위값 */
+			from tb_sp_menu_mgmt
+			where menu_cd = #{menuCd}	/* 메뉴코드 */
+	</insert>
+	
+	<!-- 메뉴 정보 수정 -->
+	<update id="updateMenu" parameterType="tbSpMenuMgmtVO">
+		update tb_sp_menu_mgmt set
+			p_menu_cd = #{pMenuCd, jdbcType=VARCHAR}	/* 상위메뉴코드 */
+		,	url = #{url}								/* URL */
+		,	menu_nm = #{menuNm}							/* 메뉴명 */
+		,	srt_sq = cast(#{srtSq} as integer)			/* 정렬 */
+		<choose>
+			<when test="pMenuCd != null and pMenuCd != ''">
+				, lv = ( select * from ( select lv + 1 from tb_sp_menu_mgmt a where menu_cd = #{pMenuCd} ) a )	/* 상위메뉴코드 */
+			</when>
+			<otherwise>, lv = 1</otherwise>
+		</choose>
+		,	uptadminid = #{adminId}						/* 수정자ID */
+		,	uptdatetime = #{regDateTime}				/* 수정일 */
+		where menu_cd = #{menuCd}						/* 메뉴코드 */
+	</update>
+	
+	<!-- 상위메뉴코드 삭제 등록 -->
+	<update id="updateMenuSetPMenuCdDelete" parameterType="tbSpMenuMgmtVO">
+		update tb_sp_menu_mgmt set
+			p_menu_cd = ''				/* 상위메뉴코드 */
+		where p_menu_cd = #{menuCd}		/* 상위메뉴코드 */
+	</update>
+	
+	<!-- 메뉴순서 수정 -->
+	<update id="updateMenuSetSortSq" parameterType="tbSpMenuMgmtVO">
+		update tb_sp_menu_mgmt set
+			p_menu_cd = #{pMenuCd, jdbcType=VARCHAR}	/* 상위메뉴코드 */
+		,	srt_sq = cast(#{srtSq} as integer)							/* 정렬 */
+		<choose>
+			<when test="pMenuCd != null and pMenuCd != ''">
+				, lv = ( select * from ( select lv + 1 from tb_sp_menu_mgmt a where menu_cd = #{pMenuCd} ) a )	/* 상위메뉴코드 */
+			</when>
+			<otherwise>, lv = 1</otherwise>
+		</choose>
+		,	uptadminid = #{adminId}						/* 수정자ID */
+		,	uptdatetime = #{regDateTime}				/* 수정일 */
+		where menu_cd = #{menuCd}						/* 메뉴코드 */
+	</update>
+	
+	<!-- 메뉴 정보 삭제 -->
+	<delete id="deleteMenu" parameterType="string">
+		delete from tb_sp_menu_mgmt where menu_cd = #{menuCd}	/* 메뉴코드 */
+	</delete>
+	
+	<!-- 권한별 메뉴정보 삭제 -->
+	<delete id="deleteAuthMenu" parameterType="string">
+		delete from tb_sp_auth_menu_mgmt where menu_cd = #{menuCd}	/* 메뉴코드 */
+	</delete>
+
+</mapper>

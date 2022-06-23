@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.pushMgmt.dao.PushMgmtMapper">
+	
+	<!-- 사용자 리스트 검색조건 -->
+	<sql id="memberListJoin">
+<!-- 		a left outer join tb_sp_organization b 
+		on a.sid = b.svcnum
+		 -->
+		a left outer join tb_sp_service c on a.sid = c.svcnum 
+		left outer join tb_sp_organization b on (c.oidkey = b.oidkey) 
+	</sql>
+	<sql id="pushTokenWhere">
+		<where>
+			<!-- 탭 구분 -->
+			<if test="oidNum != null and oidNum != ''">
+				and oidnum = #{oidNum}
+			</if>
+			<if test="svcNum != null and svcNum != ''">
+				and a.sid = #{svcNum}
+			</if>
+			<if test="osType == 2">
+				and device_id like 'AND%'
+			</if>
+			<if test="osType == 3">
+				and device_id like 'iOS%'
+			</if>
+			<if test="bioType == 'PINCODE'">
+				and b.biotype = 'pincode'
+			</if>
+			<if test="bioType == 'PATTERN'">
+				and b.biotype = 'pattern'
+			</if>
+			<if test="bioType == 'FINGERPRINT'">
+				and b.biotype = 'pattern'
+			</if>
+
+		</where>
+	</sql>
+	
+	<!-- 정책 연동 URL 로우 카운트 조회 -->
+	<select id="selectPushForRowCount" parameterType="commonVO" resultType="int">
+		
+		select count(*)
+		from tb_sp_push_mgmt a
+		left outer join tb_sp_organization b on a.oidkey = b.oidkey
+		
+	</select>
+	
+	<select id="selectPushByPk" parameterType="tbSpPushVO" resultType="tbSpPushVO">
+		/* FAQBoardMapper.selectFAQBoardByPk */
+	   select push_id pushId				         	/* 번호 */
+							 , push_setting	pushSetting
+							 , divisiontime
+							 , division_num divisionNum
+							 , push_type pushType
+							 , push_time pushTime
+							 , os_type osType
+							 , sid
+							 , oidkey
+							 , target_YN targetYN
+							 , deviceinfo deviceInfo
+							 , auth_type authType
+							 , title
+							 , message
+							 , app_message appMessage
+							 , pushstatus
+							 , reg_time regTime
+						from tb_sp_push_mgmt 
+		where push_id = #{pushId}						/* 정책번호 */
+	</select>
+	
+	<!-- 정책 연동 URL 리스트 조회  -->
+	<select id="selectPushForList" parameterType="TbSpPushVO" resultType="TbSpPushVO">
+		
+
+						select push_id pushId		 		         	/* 번호 */
+							 , a.push_setting pushSetting 	
+							 , a.divisiontime 
+							 , a.division_num divisionNum
+							 , a.push_type pushType
+							 , a.push_time pushTime
+							 , a.os_type osType
+							 , a.sid
+							 , a.oidkey
+							 , a.target_YN targetYN
+							 , a.deviceinfo deviceInfo
+							 , a.auth_type authType
+							 , a.title
+							 , a.message
+							 , a.app_message appMessage
+							 , a.pushstatus 
+							 , a.reg_time regTime
+						from tb_sp_push_mgmt a
+						left outer join tb_sp_organization b on a.oidkey = b.oidkey
+											/* 번호 */
+         order by push_id desc
+		limit #{pageSet} offset #{offSet}
+	</select>
+	<!-- 기관 번호 조회 -->
+	<select id="selectOidNum" parameterType="commonVO" resultType="int">
+		select oidnum from tb_sp_organization where oidkey = #{svcOrganization}
+	</select>
+	<!-- 서비스ID,NUM 조회 -->
+	<select id="selectSvcNameForList" parameterType="commonVO" resultType="map">
+		select t.*
+		from (
+				select t.*
+				from (
+						select svcname,
+						       svcnum
+						from tb_sp_service
+						where oidkey = #{svcOrganization}
+				) t
+		) t 
+		
+	</select>
+	
+	<!-- 사용자 정보 조회 -->
+	<select id="selectPushToken" parameterType="commonVO" resultType="string">
+		select distinct push_token
+		from tb_sp_easyauth_member a
+		left outer join tb_sp_fidomembers b on a.userid = b.userid
+		<include refid="pushTokenWhere"/>
+	</select>
+	
+	<insert id="insertPush" parameterType="tbSpPushVO">
+		/* PushMapper.insertPush */
+		insert into tb_sp_push_mgmt (
+		        push_id
+		    ,    push_setting
+			,	divisiontime			/* 정책명 */
+			,	division_num	/* 정책 연동 URL */
+			,   push_type
+			,   push_time
+			,   os_type			/* 등록일시 */
+			,	sid
+			,   oidkey
+			,   deviceinfo
+			,   auth_type
+			,   title
+			,   message
+			,   app_message
+			,   pushstatus
+			,   reg_time
+		) values (
+		        #{pushId}
+		    ,   #{pushSetting}
+			,	#{divisiontime}		/* 정책명 */
+			,	#{divisionNum}	
+			,   #{pushType}        /* 정책 연동 URL */
+			,	#{pushTime}
+			,   #{osType}				/* 등록일시 */
+			,	#{sid}
+			,   #{oidKey}
+			,   #{deviceInfo}
+			,   #{authType}
+			,   #{title}
+			,   #{message}
+			,   #{appMessage}
+			,   '1'
+			,   CURRENT_TIMESTAMP
+		)
+	</insert>
+
+</mapper>

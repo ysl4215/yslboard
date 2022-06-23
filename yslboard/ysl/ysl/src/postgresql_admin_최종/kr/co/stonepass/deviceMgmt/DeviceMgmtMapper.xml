@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.deviceMgmt.dao.DeviceMgmtMapper">
+
+	<sql id="deviceListWhere">
+		<where>
+			<if test="condSearchNm != null and condSearchNm != ''">
+				<if test="condSearchType == '01'">
+					and devicename like concat('%',#{condSearchNm},'%')
+				</if>
+				<if test="condSearchType == '02'">
+					and devicedesc like concat('%',#{condSearchNm},'%')
+				</if>
+			</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and devicedate <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+				and deviceDate <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			</if>
+			
+			<!-- <if test="svcOrganization != null and svcOrganization != ''"> and b.OIDNAME = #{svcOrganization}</if> 셀렉트 선택 -->
+		</where>
+	</sql>
+
+	<!-- 디바이스리스트 로우카운트 조회 -->
+	<select id="selectDeviceListForRowCount" parameterType="commonVO" resultType="int">
+		/* DeviceMgmtMapper.selectDeviceListForRowCount */
+		select count(*)
+		from tb_sp_devicelist
+		<include refid="deviceListWhere"/>
+	</select>
+	
+	<!-- 디바이스리스트 조회 -->
+	<select id="selectDeviceListForList" parameterType="commonVO" resultType="tbSpDeviceListVO">
+		/* DeviceMgmtMapper.selectDeviceListForList */
+		select t.*
+		from (
+				select t.*
+				from (
+						select devicename		/* 디바이스명 */
+							 , devicedate		/* 등록일자 */
+							 , devicestatus		/* 디바이스상태 */
+							 , devicedesc		/* 설명 */
+						from tb_sp_devicelist
+						<include refid="deviceListWhere"/>
+						
+				) t
+		) t	order by devicedate desc
+		limit #{pageSet} offset #{offSet}
+	</select>
+	
+	<!-- 주어진 PK에 맞는 디바이스 정보 조회 -->
+	<select id="selectDeviceListByPk" parameterType="tbSpDeviceListVO" resultType="tbSpDeviceListVO">
+		/* DeviceMgmtMapper.selectDeviceListByPk */
+		select devicename		/* 디바이스명 */
+			 , devicedate		/* 등록일자 */
+			 , devicestatus		/* 디바이스상태 */
+			 , devicedesc		/* 설명 */
+		from tb_sp_devicelist
+		where devicename = #{deviceName}	/* 디바이스명 */
+	</select>
+	
+	<!-- 주어진 PK에 맞는 디바이스리스트 로우카운트 조회 -->
+	<select id="selectDeviceListForRowCountByPk" parameterType="tbSpDeviceListVO" resultType="int">
+		/* DeviceMgmtMapper.selectDeviceListForRowCountByPk */
+		select count(*)
+		from tb_sp_devicelist
+		where replace(devicename, ' ', '') = replace(#{deviceName}, ' ', '')	/* 디바이스명 */
+	</select>
+	
+	<!-- 디바이스 정보 저장 -->
+	<insert id="insertDeviceList" parameterType="tbSpDeviceListVO">
+		/* DeviceMgmtMapper.insertDeviceList */
+		insert into tb_sp_devicelist (
+				devicename				/* 디바이스명 */
+			,	devicedate				/* 등록일자 */
+			,	devicestatus			/* 디바이스상태 */
+			,	devicedesc				/* 설명 */
+			<!-- ,	oidkey					/* 서비스 업체 키 */ -->
+		) values (
+				#{deviceName}			/* 디바이스명 */
+			,	#{deviceDate}			/* 등록일자 */
+			,	cast(#{deviceStatus} as integer)	 /* 디바이스상태 */
+			,	#{deviceDesc}			/* 설명 */
+			<!-- ,	#{svcOrganizationKey}	/* 서비스 업체 키 */ -->
+		)
+	</insert>
+	
+	<!-- 디바이스 정보 이력 저장 -->
+	<insert id="insertDeviceListLog" parameterType="tbSpDeviceListVO">
+		/* DeviceMgmtMapper.insertDeviceListLog */
+		insert into tb_sp_devicelistlog (
+				num					/* 번호 */
+			,	devicename			/* 디바이스명 */
+			,	devicedate			/* 등록일자 */
+			,	devicestatus		/* 디바이스상태 */
+			,	devicedesc			/* 설명 */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일자 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+		) values (
+				( select * from ( select coalesce(max(num), 0)+1 from tb_sp_devicelistlog a ) a )	/* 번호 */
+			,	#{deviceName}											/* 디바이스명 */
+			,	#{deviceDate}											/* 등록일자 */
+			,	cast(#{deviceStatus} as integer)						/* 디바이스상태 */
+			,	#{deviceDesc}											/* 설명 */
+			,	#{adminId}												/* 행위자ID */
+			,	#{adminName}											/* 행위자명 */
+			,	#{setDateTime}											/* 행위일자 */
+			,	#{adminIp}												/* 행위자IP */
+			,	#{adminComName}											/* 행위자COMNAME */
+			,	cast(#{actionType} as integer)							/* 행위타입 */
+			,	#{conduct, jdbcType=VARCHAR}							/* 행위 */
+			,	#{conductValue, jdbcType=VARCHAR}						/* 행위값 */
+		)
+	</insert>
+	
+	<!-- 디바이스 정보 이력 저장 insert ~ select -->
+	<insert id="insertDeviceListLogByPk" parameterType="tbSpDeviceListVO">
+		/* DeviceMgmtMapper.insertDeviceListLogByPk */
+		insert into tb_sp_devicelistlog (
+				num					/* 번호 */
+			,	devicename			/* 디바이스명 */
+			,	devicedate			/* 등록일자 */
+			,	devicestatus		/* 디바이스상태 */
+			,	devicedesc			/* 설명 */
+			,	adminid				/* 행위자ID */
+			,	adminname			/* 행위자명 */
+			,	setdatetime			/* 행위일자 */
+			,	adminip				/* 행위자IP */
+			,	admincomname		/* 행위자COMNAME */
+			,	actiontype			/* 행위타입 */
+			,	conduct				/* 행위 */
+			,	conductvalue		/* 행위값 */
+		)
+			select ( select * from ( select coalesce(max(num), 0)+1 from tb_sp_devicelistlog a ) a )	/* 번호 */
+				 , devicename												/* 디바이스명 */
+				 , devicedate												/* 등록일자 */
+				 , devicestatus												/* 디바이스상태 */
+				 , devicedesc												/* 설명 */
+				 , #{adminId}												/* 행위자ID */
+				 , #{adminName}												/* 행위자명 */
+				 , #{setDateTime}											/* 행위일자 */
+				 , #{adminIp}												/* 행위자IP */
+				 , #{adminComName}											/* 행위자COMNAME */
+				 , cast(#{actionType} as integer)							/* 행위타입 */
+				 , #{conduct, jdbcType=VARCHAR}								/* 행위 */
+				 , #{conductValue, jdbcType=VARCHAR}						/* 행위값 */
+			from tb_sp_devicelist
+			where devicename = #{deviceName}	/* 디바이스명 */
+	</insert>
+	
+	<!-- 디바이스 정보 수정 -->
+	<update id="updateDeviceList" parameterType="tbSpDeviceListVO">
+		/* DeviceMgmtMapper.updateDeviceList */
+		update tb_sp_devicelist set
+				devicestatus = cast(#{deviceStatus} as integer)	/* 디바이스상태 */
+			,	devicedesc = #{deviceDesc}		/* 설명 */
+		where devicename = #{deviceName}		/* 디바이스명 */
+	</update>
+	
+	<!-- 디바이스 정보 삭제 -->
+	<delete id="deleteDeviceList" parameterType="tbSpDeviceListVO">
+		/* DeviceMgmtMapper.deleteDeviceList */
+		delete from tb_sp_devicelist
+		where devicename = #{deviceName}	/* 디바이스명 */
+	</delete>
+
+</mapper>

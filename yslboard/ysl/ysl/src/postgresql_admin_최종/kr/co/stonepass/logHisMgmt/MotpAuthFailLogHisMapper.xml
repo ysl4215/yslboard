@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- MOTP 인증실패 이력 -->
+<mapper namespace="kr.co.stonepass.admin.logHisMgmt.dao.MotpAuthFailLogHisMapper">
+
+	<sql id="motpAuthFailLogJoin">
+		left outer join TB_SP_SERVICE T2 on T1.sid = T2.svcnum
+	</sql>
+	
+	<sql id="motpAuthFailLogListWhere">
+		<where>
+			<if test="adminType != null and adminType != ''"> and T1.sid = #{svcNum}</if>
+			<if test="condSearchNm != null and condSearchNm != ''"> and T1.userid = #{condSearchNm}</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and T1.authdatetime <![CDATA[ >= ]]> to_date(#{condSearchSdt}||'000000', 'yyyymmddhh24miss')
+				and T1.authdatetime <![CDATA[ <= ]]> to_date(#{condSearchEdt}||'235959', 'yyyymmddhh24miss')
+			</if>
+		</where>
+	</sql>
+	
+	<select id="selectMotpAuthFailLogForRowCount" parameterType="commonVO" resultType="int">
+		select count(*)
+		from TB_SP_MOTPAUTHFAILLOG T1
+		<include refid="motpAuthFailLogJoin"/>
+		<include refid="motpAuthFailLogListWhere"/>
+	</select>
+	
+	<select id="selectMotpAuthFailLogForList" parameterType="commonVO" resultType="tbSpMotpAuthFailLogVO">
+		select t.*
+		from (
+				select  t.*
+				from (
+						select T1.userid		/* 사용자ID */
+							 , T1.sid			/* 시스템ID */
+							 , T1.authdatetime	/* 인증일자 */
+							 , T1.optype		/* OPTTYPE(1:등록,2:인증,3:해지,11:재등록) */
+							 , T1.otptype		/* 인증TYPE(1:SMS,2:OTP) */
+							 , T1.statuscode	/* 상태코드 */
+							 , T1.codedesc		/* 상태코드 설명 */
+							 , T2.svcname		/* 서비스명 */
+						from TB_SP_MOTPAUTHFAILLOG T1
+						<include refid="motpAuthFailLogJoin"/>
+						<include refid="motpAuthFailLogListWhere"/>
+						order by authdatetime desc
+				
+						
+				) t
+		) t 
+        limit #{pageSet} offset #{offSet}
+	</select>
+	
+	<select id="selectMotpAuthFailLogForExcelList" parameterType="commonVO" resultType="tbSpMotpAuthFailLogVO">
+		select T1.userid		/* 사용자ID */
+			 , T1.sid			/* 시스템ID */
+			 , T1.authdatetime	/* 인증일자 */
+			 , T1.optype		/* OPTTYPE(1:등록,2:인증,3:해지,11:재등록) */
+			 , T1.otptype		/* 인증TYPE(1:SMS,2:OTP) */
+			 , T1.statuscode	/* 상태코드 */
+			 , T1.codedesc		/* 상태코드 설명 */
+			 , T2.svcname		/* 서비스명 */
+		from TB_SP_MOTPAUTHFAILLOG T1
+		<include refid="motpAuthFailLogJoin"/>
+		<include refid="motpAuthFailLogListWhere"/>
+		order by authdatetime desc
+	</select>
+
+</mapper>

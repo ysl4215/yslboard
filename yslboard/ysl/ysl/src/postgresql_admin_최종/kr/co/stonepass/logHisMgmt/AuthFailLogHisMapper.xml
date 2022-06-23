@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.logHisMgmt.dao.AuthFailLogHisMapper">
+
+	<sql id="authFailLogJoin">
+		left outer join tb_sp_service T2 on T1.sid = T2.svcnum
+		left outer join tb_sp_organization T3 on (T2.oidkey = T3.oidkey)
+		<!-- left outer join tb_sp_organization T3 on (T1.sid = T3.svcnum) -->
+		<!-- left outer join tb_sp_admin T4 on (T1.userid = T4.adminid) -->
+	</sql>
+	
+	<sql id="authFailLogListWhere">
+		<where>
+				T1.authdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+				and T1.authdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			<!-- <if test="siteManager != null and siteManager != ''"> and T4.siteManager <![CDATA[ < ]]> 3</if> 리스트 구분
+			<if test="adminType != null and adminType != ''"> and T1.sid = #{svcNum}</if> -->
+
+			<if test="siteManager == 3 "><!-- 업체 구분 -->
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and T3.OIDKEY = #{svcOrganizationKey}</if>
+			</if>
+			<if test="siteManager ==  4 "><!-- 업체 구분 -->
+				and svcnum in (
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				)
+			</if>
+			<!-- 검색 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and T3.OIDNAME = #{svcOrganization}</if> <!-- 셀렉트 선택 -->
+			<if test="condSearchNm != null and condSearchNm != ''"> and T1.userid like concat('%',#{condSearchNm},'%')</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				
+			</if>
+		</where>
+	</sql>
+	
+	<select id="selectAuthFailLogForRowCount" parameterType="commonVO" resultType="int">
+		select a.a+b.a from
+		(select count(*) a
+		from tb_sp_authfaillog T1
+		<include refid="authFailLogJoin"/>
+		<include refid="authFailLogListWhere"/>) a
+		, (select count(*) a
+		from tb_sp_motpauthfaillog T1
+		<include refid="authFailLogJoin"/>
+		<include refid="authFailLogListWhere"/>) b
+	</select>
+	
+	<select id="selectAuthFailLogForList" parameterType="commonVO" resultType="tbSpAuthFailLogVO">
+		select t.userId, cast(t.authuse as integer), cast(t.authtype as integer), t.authDateTime, t.statusCode, t.codedesc, t.sid, t.svcOrganization
+		from (
+				select t.*
+				from (
+						select T1.userid
+							 , case when T2.svcname is null then T1.sid else T2.svcname end as sid
+							 , T1.authdatetime
+							 , authtype 
+							 , authuse 
+							 , T1.statuscode
+							 , T1.codedesc
+							 , T3.OIDNAME svcOrganization
+						from tb_sp_authfaillog T1
+						<include refid="authFailLogJoin"/>
+						<include refid="authFailLogListWhere"/>
+				) t
+		) t	
+		
+		union all
+		
+		select t.userId, cast(t.authuse as integer), 0, t.authDateTime, t.statusCode, t.codedesc, t.sid, t.svcOrganization
+		from (
+				select t.*
+				from (
+						select T1.userid
+							 , case when T2.svcname is null then T1.sid else T2.svcname end as sid
+							 , T1.authdatetime
+							 , 0
+							 , authuse
+							 , T1.statuscode
+							 , T1.codedesc
+							 , T3.OIDNAME svcOrganization
+						from tb_sp_motpauthfaillog T1
+						<include refid="authFailLogJoin"/>
+						<include refid="authFailLogListWhere"/>
+				) t
+		) t	
+		order by authdatetime desc
+		limit #{pageSet} offset #{offSet}
+	</select>
+	
+	<select id="selectAuthFailLogForExcelList" parameterType="commonVO" resultType="tbSpAuthFailLogVO">
+		select t.*
+		from (
+				select t.*
+				from (
+						select T1.userid
+							 , case when T2.svcname is null then T1.sid else T2.svcname end as sid
+							 , T1.authdatetime
+							 , T1.authtype
+							 , T1.authuse
+							 , T1.statuscode
+							 , T1.codedesc
+						 <if test="siteManager != 3 or siteManager != 4 "> 	 , T3.OIDNAME svcOrganization</if>
+						from tb_sp_authfaillog T1
+						<include refid="authFailLogJoin"/>
+						<include refid="authFailLogListWhere"/>
+						
+				) t
+		) t	
+		
+		union all
+		
+		select t.*
+		from (
+				select t.*
+				from (
+						select T1.userid
+							 , case when T2.svcname is null then T1.sid else T2.svcname end as sid
+							 , T1.authdatetime
+							 , 0
+							 , T1.authuse
+							 , T1.statuscode
+							 , T1.codedesc
+						 <if test="siteManager != 3 or siteManager != 4 "> 	 , T3.OIDNAME svcOrganization </if>
+						from tb_sp_motpauthfaillog T1
+						<include refid="authFailLogJoin"/>
+						<include refid="authFailLogListWhere"/>
+						
+				) t
+		) t	
+		order by authdatetime desc
+	
+	
+	
+		<!-- select T1.userid
+			 , case when T2.svcnum is null then T1.sid else svcname end as sid
+			 , T1.userkey
+			 , T1.aaid
+			 , T1.keyid
+			 , T1.authdatetime
+			 , T1.authtype
+			 , T1.authuse
+			 , T1.statuscode
+			 , T1.codedesc
+			 <if test="siteManager != 3 or siteManager != 4 "> , T3.oidname svcorganization  </if>
+		from tb_sp_authfaillog T1
+		<include refid="authFailLogJoin"/>
+		<include refid="authFailLogListWhere"/>
+		order by authdatetime desc -->
+		
+	</select>
+
+</mapper>

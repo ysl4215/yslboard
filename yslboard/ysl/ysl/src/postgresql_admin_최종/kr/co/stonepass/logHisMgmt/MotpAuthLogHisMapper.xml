@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- MOTP 인증 이력 -->
+<mapper namespace="kr.co.stonepass.admin.logHisMgmt.dao.MotpAuthLogHisMapper">
+
+	<sql id="motpAuthLogJoin">
+		left outer join TB_SP_SERVICE T2 on T1.sid = T2.svcnum
+	</sql>
+	
+	<sql id="motpAutLogListWhere">
+		<where>
+			<if test="adminType != null and adminType != ''"> and T1.sid = #{svcNum}</if>
+			<if test="condSearchNm != null and condSearchNm != ''"> and T1.userid = #{condSearchNm}</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and T1.authdatetime <![CDATA[ >= ]]> to_date(#{condSearchSdt}||'000000', 'yyyymmddhh24miss')
+				and T1.authdatetime <![CDATA[ <= ]]> to_date(#{condSearchEdt}||'235959', 'yyyymmddhh24miss')
+			</if>
+		</where>
+	</sql>
+	
+	<select id="selectMotpAuthLogForRowCount" parameterType="commonVO" resultType="int">
+		select count(*)
+		from TB_SP_MOTPAUTHLOG T1
+		<include refid="motpAuthLogJoin"/>
+		<include refid="motpAutLogListWhere"/>
+	</select>
+	
+	<select id="selectMotpAuthLogForList" parameterType="commonVO" resultType="tbSpMotpAuthLogVO">
+		select t.*
+		from (
+				select t.*
+				from (
+						 select T1.userid		/* 사용자ID */
+							 , T1.sid			/* 시스템ID */
+							 , T1.authdatetime	/* 인증일자 */
+							 , T1.otptype		/* 인증TYPE(1:SMS,2:OTP) */
+							 , T2.svcname		/* 서비스명 */
+						from TB_SP_MOTPAUTHLOG T1
+						<include refid="motpAuthLogJoin"/>
+						<include refid="motpAutLogListWhere"/>
+						order by authdatetime desc
+						
+				) t
+		) t limit #{pageSet} offset #{offSet};
+	</select>
+	
+	<select id="selectMotpAuthLogForExcelList" parameterType="commonVO" resultType="tbSpMotpAuthLogVO">
+		select T1.userid		/* 사용자ID */
+			 , T1.sid			/* 시스템ID */
+			 , T1.authdatetime	/* 인증일자 */
+			 , T1.otptype		/* 인증TYPE(1:SMS,2:OTP) */
+			 , T2.svcname		/* 서비스명 */
+		from TB_SP_MOTPAUTHLOG T1
+		<include refid="motpAuthLogJoin"/>
+		<include refid="motpAutLogListWhere"/>
+		order by authdatetime desc
+	</select>
+
+</mapper>

@@ -1,0 +1,18 @@
+package com.swempire.web;
+
+@RunWith(SpringJUnit4ClassRunner.class)
+
+@ContextConfiguration(locations = {
+
+		"classpath:spring/root-context.xml",
+
+		"classpath:spring/dataSource-context.xml"
+
+		})
+
+
+
+√‚√≥: https://freehoon.tistory.com/102 [»∆¿’ ∫Ì∑Œ±◊]
+public class BoardDAOTest {
+
+}

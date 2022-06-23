@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.stonepass.admin.logHisMgmt.dao.LogHisMgmtMapper">
+	
+	<!-- 관리자관리 로긴 조인 -->
+<!-- 	<sql id="loginLogListJoin">
+		T1 left outer join tb_sp_admin T2 on T1.adminid = T2.adminid 
+	</sql>
+	관리자관리 로긴 조인 2
+	<sql id="loginLogListJoin2">
+		left outer join tb_sp_organization T3 on T.oidkey = T3.oidkey
+	</sql> -->
+	<!-- 관리자로그인이력 검색조건 -->
+	<sql id="loginLogListWhere">
+		<where>
+			<!-- 리스트 설정 -->
+			<if test="siteManager != null and siteManager != ''"> and cast(t.adminLevel as integer) > 2</if>
+			<if test="siteManager >= 3 ">
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and t.OIDKEY = #{svcOrganizationKey}</if>
+			</if>
+			<!-- 상단 검색 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and T3.OIDNAME = #{svcOrganization}</if>
+
+			<!-- <if test="adminType != null and adminType != ''"> and t.svcnum = #{svcNum}</if> -->
+			<if test="condSearchNm != null and condSearchNm != ''">
+				<if test="condSearchType == '01'"> and t.adminid  like concat('%',#{condSearchNm},'%')</if>
+				<if test="condSearchType == '02'"> and t.adminname like concat('%',#{condSearchNm},'%')</if>
+			</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and t.setdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+				and t.setdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			</if>
+		</where>
+	</sql>
+	
+	<sql id="policyLogJoin">
+		left outer join tb_sp_service T2 on T1.sid = T2.svcnum 
+		left outer join tb_sp_organization T3 on (T2.oidkey = T3.oidkey) 
+	</sql>
+	
+	<!-- 관리자관리    활동  조인 -->
+	<!-- <sql id="adminActionLogListJoin">
+		left outer join tb_sp_organization T3  on T2.oidkey = T3.oidkey 
+	</sql> -->
+	<!-- 관리자활동이력 검색조건 -->
+	<sql id="adminActionLogListWhere">
+		<where>
+			 t.setdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+			 and t.setdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			<!-- 리스트 설정 -->
+			<if test="siteManager != null and siteManager != ''"> and cast(t.adminLevel as integer) > 2</if>
+			<if test="siteManager >= 3 ">
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and t.OIDKEY = #{svcOrganizationKey} </if>
+			</if>
+			<!-- 상단 검색 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and T3.OIDNAME = #{svcOrganization}</if>
+		
+			<!-- <if test="adminType != null and adminType != ''"> and T1.svcnum = #{svcNum}</if> -->
+			<if test="condSearchNm != null and condSearchNm != ''">
+				<if test="condSearchType == '01'"> and t.actionId  like concat('%',#{condSearchNm},'%') </if>
+				<if test="condSearchType == '02'"> and t.adminname like concat('%',#{condSearchNm},'%') </if>
+				<if test="condSearchType == '03'"> and t.adminid like concat('%',#{condSearchNm},'%') </if>
+			</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				
+			</if>
+		</where>
+	</sql>
+	
+	<!-- 서비스관리이력 검색조건 -->
+	<sql id="serviceLogListJoin">
+		a left outer join tb_sp_service c
+		on (a.svcnum = c.svcnum )
+		left outer join  tb_sp_organization b 
+		on (b.oidkey = c.oidkey )
+	</sql>
+	<sql id="serviceLogListWhere">
+		<where>
+			<!--관리자 리스트 구분 -->
+			<!-- <if test="siteManager != null and siteManager != ''"> and c.siteManager <![CDATA[ >= ]]> 3</if> -->
+			
+			<!-- <if test="siteManager == 3 or siteManager == 4 ">업체 구분
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and b.OIDKEY = #{svcOrganizationKey}</if>
+			</if> -->
+			<!-- <if test="adminType != null and adminType != ''"> and a.svcnum = #{svcNum}</if> -->
+			<!-- 검색조건 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and b.OIDNAME = #{svcOrganization}</if> <!-- 셀렉트 선택 -->
+			<if test="condSearchNm != null and condSearchNm != ''">
+				<if test="condSearchType == '01'"> and a.adminid  like concat('%',#{condSearchNm},'%')</if>
+				<if test="condSearchType == '02'"> and a.adminname like concat('%',#{condSearchNm},'%')</if>
+			</if>
+			<if test="condActionType != null and condActionType != ''"> and actiontype = cast(#{condActionType} as integer)</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+				and a.setdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+				and a.setdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			</if>
+		</where>
+	</sql>
+	
+	<!-- 인증정책관리 이력 검색조건 -->
+	<sql id="policyLogListWhere">
+		<where>
+			<!-- <if test="siteManager != null and siteManager != ''"> and T4.siteManager <![CDATA[ < ]]> 3</if> 리스트 구분 -->
+			<!-- <if test="adminType != null and adminType != ''"> and T1.sid = #{svcNum}</if> -->
+			T1.setdatetime <![CDATA[ >= ]]> to_timestamp(concat(#{condSearchSdt},'000000'), 'YYYYMMDDHH24MISS')
+			and T1.setdatetime <![CDATA[ <= ]]> to_timestamp(concat(#{condSearchEdt},'235959'), 'YYYYMMDDHH24MISS')
+			<if test="siteManager == 3 "><!-- 업체 구분 -->
+				<if test="svcOrganizationKey != null and svcOrganizationKey != ''"> and T3.OIDKEY = #{svcOrganizationKey}</if>
+			</if>
+			<if test="siteManager ==  4 "><!-- 업체 구분 -->
+				and svcnum in ( 
+					select  b.svcnum  
+					from tb_sp_service a inner join tb_sp_servicegrp b on a.SVCNUM = b.SVCNUM 
+					inner join tb_sp_admin c on b.adminid = c.adminid 
+					where b.adminid = #{adminId} 
+				)
+			</if>
+			<!-- 검색 -->
+			<if test="svcOrganization != null and svcOrganization != ''"> and T3.OIDNAME = #{svcOrganization}</if> <!-- 셀렉트 선택 -->
+			<if test="condSearchNm != null and condSearchNm != ''">
+			<if test="condSearchType == '01'">and T1.adminid  like concat('%',#{condSearchNm},'%')</if>
+			<if test="condSearchType == '02'">and T1.adminname  like concat('%',#{condSearchNm},'%')</if>
+			</if>
+			<if test="condSearchSdt != null and condSearchSdt != '' and condSearchEdt != null and condSearchEdt != ''">
+			</if>
+		</where>
+	</sql>
+	
+	<!-- 관리자로그인 이력 로우카운트 조회 -->
+	<select id="selectLoginLogForRowCount" parameterType="commonVO" resultType="int">
+		select count(*)
+		from (
+			select t.*, oidname svcorganization 
+			from (
+				select T1.adminid 
+				, T1.adminname 
+				, T1.setdatetime 
+				, T1.adminip 
+				, T1.admincomname 
+				, T2.sitemanager as adminLevel 
+				, T2.oidkey
+				from tb_sp_loginlog T1 left outer join tb_sp_admin T2 on T1.adminid = T2.adminid 
+			) t
+			left outer join tb_sp_organization  T3  on T.oidkey = T3.oidkey 
+			  <include refid="loginLogListWhere"/>
+		) t
+	</select>
+	
+	<!-- 관리자로그인 이력 리스트 조회!!! -->
+	<select id="selectLoginLogForList" parameterType="commonVO" resultType="tbSpLoginLogVO">
+		select t.*
+		from (
+				select t.*
+				from (
+						select t.*, oidname svcorganization 
+						from (
+							select T1.adminid 
+							, T1.adminname 
+							, T1.setdatetime 
+							, T1.adminip 
+							, T1.admincomname 
+							, T2.sitemanager as adminLevel 
+							, T2.oidkey
+							from tb_sp_loginlog T1 left outer join tb_sp_admin T2 on T1.adminid = T2.adminid 
+						) t
+						left outer join tb_sp_organization T3 on T.oidkey = T3.oidkey
+						<include refid="loginLogListWhere"/>
+				) t
+		) t
+		order by setdatetime desc
+		limit #{pageSet} offset #{offSet}
+	</select>
+	
+	<!-- 관리자로그인 이력 전체 리스트 조회 -->
+	<select id="selectLoginLogForExcelList" parameterType="commonVO" resultType="tbSpLoginLogVO">
+		select t.*
+		from (
+				select t.*
+				from (
+						select t.*
+						<if test="siteManager != 3 and siteManager != 4 "> , oidname svcorganization  </if> 
+						from (
+							select T1.adminid 
+							, T1.adminname 
+							, T1.setdatetime 
+							, T1.adminip 
+							, T1.admincomname 
+							, T2.sitemanager as adminLevel 
+							, T2.oidkey 
+							from tb_sp_loginlog T1 left outer join tb_sp_admin T2 on T1.adminid = T2.adminid 
+						) t
+						left outer join tb_sp_organization T3 on T.oidkey = T3.oidkey
+						<include refid="loginLogListWhere"/>
+				) t
+		) t
+		order by t.setdatetime desc
+	</select>
+	
+	<!-- 관리자활동 이력 로우카운트 조회 -->
+	<select id="selectAdminLogForRowCount" parameterType="commonVO" resultType="int">
+		select count(*)
+		from (
+			select t.*, oidname svcorganization
+				from (
+					select T1.targetid as adminId
+						 , T1.regip
+						 , T1.admintype
+						 , T1.targetname as adminName
+						 , T1.adminstatus
+						 , T1.pwd_change_datetime as pwdChangeDateTime
+						 , T1.regipstatus
+						 , T1.pwd_init_yn as pwdInitYn
+						 , T1.pwd_init_datetime as pwdInitDateTime
+						 , T1.adminid as actionId
+						 , T1.adminname as actionName
+						 , T1.setdatetime
+						 , T1.adminip
+						 , T1.admincomname
+						 , T1.actiontype
+						 , T1.conduct
+						 , T1.conductvalue
+						, T2.sitemanager adminlevel
+						, T2.OIDKEY
+						from tb_sp_adminlog T1 left outer join tb_sp_admin T2 on T1.adminid = T2.adminid 
+					) t 
+					left outer join tb_sp_organization T3 on t.oidkey = T3.oidkey 
+					<include refid="adminActionLogListWhere"/>
+		) t
+	</select>
+	
+	<!-- 관리자활동 이력 리스트 조회!!! -->
+	<select id="selectAdminLogForList" parameterType="commonVO" resultType="tbSpAdminVO">
+		select t.*
+		from (
+				select t.*, oidname svcorganization
+				from (
+					select T1.targetid as adminId
+						 , T1.regip
+						 , T1.admintype
+						 , T1.adminname as adminName
+						 , T1.adminstatus
+						 , T1.pwd_change_datetime as pwdChangeDateTime
+						 , T1.regipstatus
+						 , T1.pwd_init_yn as pwdInitYn
+						 , T1.pwd_init_datetime as pwdInitDateTime
+						 , T1.adminid as actionId
+						 , T2.adminname as actionName
+						 , T1.setdatetime
+						 , T1.adminip
+						 , T1.admincomname
+						 , T1.actiontype
+						 , T1.conduct
+						 , coalesce(T1.conductvalue,'')
+						, T2.sitemanager adminlevel
+						, T2.OIDKEY
+						from tb_sp_adminlog T1 left outer join tb_sp_admin T2 on T1.adminid = T2.adminid 
+				) t 
+				left outer join tb_sp_organization T3 on t.oidkey = T3.oidkey 
+				<include refid="adminActionLogListWhere"/>
+		) t
+		order by setdatetime desc
+		limit #{pageSet} offset #{offSet} 
+	</select>
+	
+	<!-- 관리자활동 이력 전체 리스트 조회 -->
+	<select id="selectAdminLogForExcelList" parameterType="commonVO" resultType="tbSpAdminVO">
+		select t.*
+		from (
+			select t.*, oidname svcorganization
+			from (
+				select T1.targetid as adminId
+					 , T1.regip
+					 , T1.admintype
+					 , T1.adminname as adminName
+					 , T1.adminstatus
+					 , T1.pwd_change_datetime as pwdChangeDateTime
+					 , T1.regipstatus
+					 , T1.pwd_init_yn as pwdInitYn
+					 , T1.pwd_init_datetime as pwdInitDateTime
+					 , T1.adminid as actionId
+					 , T2.adminname as actionName
+					 , T1.setdatetime
+					 , T1.adminip
+					 , T1.admincomname
+					 , T1.actiontype
+					 , T1.conduct
+					 , coalesce(T1.conductvalue,'')
+					, T2.sitemanager adminlevel
+					, T2.OIDKEY
+					from tb_sp_adminlog T1 left outer join tb_sp_admin T2 on T1.adminid = T2.adminid 
+			) t 
+			left outer join tb_sp_organization T3 on t.oidkey = T3.oidkey 
+			<include refid="adminActionLogListWhere"/>
+		) t
+		order by setdatetime desc
+	</select>
+	
+	<!-- 서비스관리 이력 로우카운트 조회 -->
+	<select id="selectServiceLogForRowCount" parameterType="commonVO" resultType="int">
+		select count(*)
+		from tb_sp_service_log
+		<include refid="serviceLogListJoin"/>
+		<include refid="serviceLogListWhere"/>
+	</select>
+	
+	<!-- 서비스관리 이력 리스트 조회 -->
+	<select id="selectServiceLogForList" parameterType="commonVO" resultType="tbSpServiceVO">
+		select t.*
+		from (
+				select t.*
+				from (
+						select a.svcnum
+							 , a.svcname
+							 , a.svckey
+							 , a.svcstatus
+							 , a.adminid
+							 , a.adminname
+							 , a.setdatetime
+							 , a.adminip
+							 , a.admincomname
+							 , a.actiontype
+							 , a.conduct
+							 , a.conductvalue
+							 , b.OIDNAME svcOrganization
+					from tb_sp_service_log
+					<include refid="serviceLogListJoin"/>
+					<include refid="serviceLogListWhere"/>
+					
+				) t
+		) t	order by setdatetime desc
+		limit #{pageSet} offset #{offSet}
+	</select>
+	
+	<!-- 서비스관리 이력 전체 리스트 조회 -->
+	<select id="selectServiceLogForExcelList" parameterType="commonVO" resultType="tbSpServiceVO">
+		select a.svcnum
+			 , a.svcname
+			 , a.svckey
+			 , a.svcstatus
+			 , a.adminid
+			 , a.adminname
+			 , a.setdatetime
+			 , a.adminip
+			 , a.admincomname
+			 , a.actiontype
+			 , a.conduct
+			 , a.conductvalue
+			 , b.oidname svcorganization
+		from tb_sp_service_log
+		<include refid="serviceLogListJoin"/>
+		<include refid="serviceLogListWhere"/>
+		order by setdatetime desc
+	</select>
+	
+	<!-- 인증정책관리 이력 로우카운트 조회 -->
+	<select id="selectPolicyLogForRowCount" parameterType="commonVO" resultType="int">
+		select count(*)
+		from tb_sp_policy_log t1
+		<include refid="policyLogJoin"/>
+		<include refid="policyLogListWhere"/>
+	</select>
+	
+	<!-- 인증정책관리 이력 리스트 조회 -->
+	<select id="selectPolicyLogForList" parameterType="commonVO" resultType="tbSpPolicyVO">
+		select t.*
+		from (
+				select t.*
+				from (
+						select T1.adminid
+							 , T1.adminname
+							 , T1.setdatetime
+							 , T1.adminip
+							 , T1.admincomname
+							 , T1.actiontype
+							 , T1.conduct
+							 , T1.conductvalue
+							 , T1.sid
+							 , T2.svcname
+						from tb_sp_policy_log T1
+						<include refid="policyLogJoin"/>
+						<include refid="policyLogListWhere"/>
+						
+				) t
+		) t order by setdatetime desc
+		limit #{pageSet} offset #{offSet} 
+	</select>
+	
+	<!-- 인증정책관리 이력 전체 리스트 조회 -->
+	<select id="selectPolicyLogForExcelList" parameterType="commonVO" resultType="TbSpPolicyVO">
+		select adminid
+			 , adminname
+			 , setdatetime
+			 , adminip
+			 , admincomname
+			 , actiontype
+			 , conduct
+			 , conductvalue
+			 <!-- <if test="condSearchType == '01'"> , T3.oidname svcorganization  </if>  -->
+		from tb_sp_policy_log T1
+		<include refid="policyLogListWhere"/>
+		order by setdatetime desc
+	</select>
+
+</mapper>
